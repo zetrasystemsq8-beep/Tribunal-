@@ -1,8 +1,9 @@
+// config.dart
 import 'package:flutter/material.dart';
 
-// REPLACE THESE WITH YOUR ACTUAL SUPABASE CREDENTIALS
-const String SUPABASE_URL = 'https://your-project.supabase.co';
-const String SUPABASE_ANON_KEY = 'your-anon-key-here';
+// Read from environment variables (set in GitHub Secrets via --dart-define)
+const String SUPABASE_URL = String.fromEnvironment('SUPABASE_URL', defaultValue: '');
+const String SUPABASE_ANON_KEY = String.fromEnvironment('SUPABASE_ANON_KEY', defaultValue: '');
 
 // ============================================================================
 // API ENDPOINTS & TABLE NAMES
