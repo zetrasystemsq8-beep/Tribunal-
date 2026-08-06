@@ -15,17 +15,14 @@ final supabase = Supabase.instance.client;
 // ============================================================================
 
 class AuthService {
-  /// Sign up with ZetraMail and password
-  /// Returns user profile on success, throws on error
   Future<UserProfile> signUp({
     required String zetramail,
     required String password,
     required String username,
   }) async {
     try {
-      // Step 1: Resolve ZetraMail to internal email via RPC
       final resolveResult = await supabase.rpc('resolve_login_email', params: {
-        'p_zetramail': zetramail,
+        'p_identifier': zetramail,
       });
 
       if (resolveResult == null) {
@@ -34,7 +31,6 @@ class AuthService {
 
       final internalEmail = resolveResult as String;
 
-      // Step 2: Sign up with resolved email
       final authResponse = await supabase.auth.signUp(
         email: internalEmail,
         password: password,
@@ -44,7 +40,6 @@ class AuthService {
         throw Exception('Sign up failed');
       }
 
-      // Step 3: Create profile record
       await supabase.from(TABLE_PROFILES).insert({
         'id': authResponse.user!.id,
         'zetramail': zetramail,
@@ -66,16 +61,13 @@ class AuthService {
     }
   }
 
-  /// Sign in with ZetraMail and password
-  /// Returns user on success, then requires OTP verification
   Future<UserProfile> signIn({
     required String zetramail,
     required String password,
   }) async {
     try {
-      // Step 1: Resolve ZetraMail to internal email
       final resolveResult = await supabase.rpc('resolve_login_email', params: {
-        'p_zetramail': zetramail,
+        'p_identifier': zetramail,
       });
 
       if (resolveResult == null) {
@@ -84,7 +76,6 @@ class AuthService {
 
       final internalEmail = resolveResult as String;
 
-      // Step 2: Sign in (creates session immediately)
       final authResponse = await supabase.auth.signInWithPassword(
         email: internalEmail,
         password: password,
@@ -94,12 +85,13 @@ class AuthService {
         throw Exception('Login failed');
       }
 
-      // Step 3: Request OTP
       await _requestOtp(internalEmail);
 
-      // Step 4: Fetch user profile
-      final profileData =
-          await supabase.from(TABLE_PROFILES).select().eq('id', authResponse.user!.id).single();
+      final profileData = await supabase
+          .from(TABLE_PROFILES)
+          .select()
+          .eq('id', authResponse.user!.id)
+          .single();
 
       return UserProfile.fromJson(profileData);
     } on AuthException catch (e) {
@@ -109,7 +101,6 @@ class AuthService {
     }
   }
 
-  /// Request OTP code (internal RPC call)
   Future<void> _requestOtp(String internalEmail) async {
     try {
       await supabase.rpc('request_otp', params: {
@@ -120,7 +111,6 @@ class AuthService {
     }
   }
 
-  /// Verify OTP code and mark user as fully logged in
   Future<bool> verifyOtp({
     required String internalEmail,
     required String otpCode,
@@ -132,7 +122,6 @@ class AuthService {
       });
 
       if (result == true) {
-        // Mark OTP as verified in user metadata
         final user = supabase.auth.currentUser;
         if (user != null) {
           await supabase.auth.updateUser(
@@ -151,7 +140,6 @@ class AuthService {
     }
   }
 
-  /// Sign out
   Future<void> signOut() async {
     try {
       await supabase.auth.signOut();
@@ -160,7 +148,6 @@ class AuthService {
     }
   }
 
-  /// Get current user
   Future<UserProfile?> getCurrentUser() async {
     try {
       final user = supabase.auth.currentUser;
@@ -178,11 +165,10 @@ class AuthService {
     }
   }
 
-  /// Forgot password
   Future<void> forgotPassword({required String zetramail}) async {
     try {
       final resolveResult = await supabase.rpc('resolve_login_email', params: {
-        'p_zetramail': zetramail,
+        'p_identifier': zetramail,
       });
 
       if (resolveResult == null) {
@@ -203,7 +189,6 @@ class AuthService {
 // ============================================================================
 
 class OverviewService {
-  /// Fetch overview by ID from Supabase
   Future<Overview> fetchOverviewById(String overviewId) async {
     try {
       final data = await supabase
@@ -223,7 +208,6 @@ class OverviewService {
     }
   }
 
-  /// Fetch all overviews (for browsing)
   Future<List<Overview>> fetchAllOverviews({int limit = 50, int offset = 0}) async {
     try {
       final data = await supabase
@@ -240,8 +224,6 @@ class OverviewService {
     }
   }
 
-  /// Verify overview by content hash
-  /// Used to prevent tampering
   bool verifyOverviewHash(Overview overview) {
     try {
       final snapshotJson = overview.snapshotData.toString();
@@ -252,10 +234,8 @@ class OverviewService {
     }
   }
 
-  /// Import overview by ID (verify + add to Tribunal if new)
   Future<Overview> importOverviewById(String overviewId) async {
     try {
-      // Check if already imported
       final existing = await supabase
           .from(TABLE_OVERVIEWS)
           .select()
@@ -266,22 +246,18 @@ class OverviewService {
         throw Exception(ErrorMessages.alreadyImported);
       }
 
-      // Fetch from Crucible (assuming shared DB)
       final overview = await fetchOverviewById(overviewId);
 
-      // Verify hash
       if (!verifyOverviewHash(overview)) {
         throw Exception(ErrorMessages.hashMismatch);
       }
 
-      // Overview already exists in shared table, return it
       return overview;
     } catch (e) {
       throw Exception('Import failed: $e');
     }
   }
 
-  /// Search overviews by category
   Future<List<Overview>> searchByCategory(String category) async {
     try {
       final data = await supabase
@@ -298,7 +274,6 @@ class OverviewService {
     }
   }
 
-  /// Search overviews by title/one-liner
   Future<List<Overview>> searchByKeyword(String keyword) async {
     try {
       final data = await supabase
@@ -321,10 +296,8 @@ class OverviewService {
 // ============================================================================
 
 class ReviewService {
-  /// Submit a new review
   Future<Review> submitReview(Review review) async {
     try {
-      // Check if expert already reviewed this overview
       final existing = await supabase
           .from(TABLE_REVIEWS)
           .select()
@@ -336,7 +309,6 @@ class ReviewService {
         throw Exception(ErrorMessages.duplicateReview);
       }
 
-      // Validate all scores are filled
       if (review.originality == null ||
           review.technicalFeasibility == null ||
           review.economicFeasibility == null ||
@@ -347,7 +319,6 @@ class ReviewService {
         throw Exception('All scores must be provided');
       }
 
-      // Insert review
       final data = await supabase
           .from(TABLE_REVIEWS)
           .insert(review.toInsertJson())
@@ -362,7 +333,6 @@ class ReviewService {
     }
   }
 
-  /// Update existing review
   Future<Review> updateReview(Review review) async {
     try {
       final data = await supabase
@@ -380,7 +350,6 @@ class ReviewService {
     }
   }
 
-  /// Fetch all reviews for an overview
   Future<List<Review>> fetchReviewsForOverview(String overviewId) async {
     try {
       final data = await supabase
@@ -389,7 +358,6 @@ class ReviewService {
           .eq('overview_id', overviewId)
           .order('created_at', ascending: false);
 
-      // Fetch expert profiles for each review
       List<Review> reviews = [];
       for (final item in data) {
         final review = Review.fromJson(item as Map<String, dynamic>);
@@ -406,7 +374,6 @@ class ReviewService {
     }
   }
 
-  /// Fetch expert's review for an overview
   Future<Review?> fetchExpertReview(
       String overviewId, String expertId) async {
     try {
@@ -431,7 +398,6 @@ class ReviewService {
     }
   }
 
-  /// Delete review
   Future<void> deleteReview(String reviewId) async {
     try {
       await supabase.from(TABLE_REVIEWS).delete().eq('id', reviewId);
@@ -440,7 +406,6 @@ class ReviewService {
     }
   }
 
-  /// Get review count for overview
   Future<int> getReviewCount(String overviewId) async {
     try {
       final data = await supabase
@@ -454,7 +419,6 @@ class ReviewService {
     }
   }
 
-  /// Helper: Fetch profile for review author
   Future<UserProfile?> _fetchProfileForReview(String userId) async {
     try {
       final data = await supabase
@@ -476,7 +440,6 @@ class ReviewService {
 // ============================================================================
 
 class ReportService {
-  /// Generate final report from reviews
   Future<FinalReport> generateFinalReport(
     String overviewId,
     List<Review> reviews,
@@ -486,16 +449,9 @@ class ReportService {
         throw Exception('Minimum 3 reviews required for final report');
       }
 
-      // Calculate average scores
       final averageScores = _calculateAverageScores(reviews);
-
-      // Analyze agreement/disagreement
       final analysis = _analyzeReviewAgreement(reviews);
-
-      // Determine verdict
       final verdict = _determineVerdict(averageScores);
-
-      // Determine confidence
       final confidence = _determineConfidence(reviews, analysis);
 
       final report = FinalReport(
@@ -515,7 +471,6 @@ class ReportService {
         generatedAt: DateTime.now(),
       );
 
-      // Save to DB
       await supabase.from(TABLE_FINAL_REPORTS).insert(report.toJson());
 
       return report;
@@ -524,7 +479,6 @@ class ReportService {
     }
   }
 
-  /// Fetch final report for overview
   Future<FinalReport?> fetchFinalReport(String overviewId) async {
     try {
       final data = await supabase
@@ -540,7 +494,6 @@ class ReportService {
     }
   }
 
-  /// Calculate average scores across all reviews
   AverageScores _calculateAverageScores(List<Review> reviews) {
     double sumOriginality = 0;
     double sumTechnical = 0;
@@ -573,7 +526,6 @@ class ReportService {
     );
   }
 
-  /// Analyze areas of agreement/disagreement
   Map<String, String> _analyzeReviewAgreement(List<Review> reviews) {
     final recommendations = reviews.map((r) => r.recommendation).toList();
     final agreementCount =
@@ -599,7 +551,6 @@ class ReportService {
     };
   }
 
-  /// Extract minority opinions
   String _extractMinorityOpinions(List<Review> reviews) {
     final recommendations = reviews.map((r) => r.recommendation).toList();
     final counts = <String, int>{};
@@ -616,7 +567,6 @@ class ReportService {
         .join(', ');
   }
 
-  /// Determine final verdict
   String _determineVerdict(AverageScores scores) {
     final overall = scores.getOverallAverage();
 
@@ -627,7 +577,6 @@ class ReportService {
     return 'Rejected';
   }
 
-  /// Determine confidence level
   String _determineConfidence(
       List<Review> reviews, Map<String, String> analysis) {
     final recommendations = reviews.map((r) => r.recommendation).toList();
@@ -640,7 +589,6 @@ class ReportService {
     return 'Low';
   }
 
-  /// Generate executive summary
   String _generateExecutiveSummary(AverageScores scores, String verdict) {
     final overall = scores.getOverallAverage();
     return '$verdict - Overall average score: ${overall.toStringAsFixed(1)}/100. '
@@ -649,7 +597,6 @@ class ReportService {
         'Ethics: ${scores.ethics.toStringAsFixed(1)}.';
   }
 
-  /// Summarize concerns from reviews
   String _summarizeConcerns(List<Review> reviews) {
     final concerns = reviews
         .where((r) => r.weaknesses != null && r.weaknesses!.isNotEmpty)
@@ -661,7 +608,6 @@ class ReportService {
         : concerns;
   }
 
-  /// Generate recommendations
   String _generateRecommendations(List<Review> reviews, String verdict) {
     final recommendations = reviews
         .where((r) => r.requiredChanges != null && r.requiredChanges!.isNotEmpty)
@@ -680,7 +626,6 @@ class ReportService {
 // ============================================================================
 
 class ProfileService {
-  /// Update user profile
   Future<UserProfile> updateProfile({
     required String userId,
     String? username,
@@ -706,7 +651,6 @@ class ProfileService {
     }
   }
 
-  /// Fetch user profile
   Future<UserProfile?> fetchProfile(String userId) async {
     try {
       final data = await supabase
@@ -723,7 +667,6 @@ class ProfileService {
   }
 }
 
-// Simple UUID generator
 class Uuid {
   const Uuid();
 
