@@ -445,10 +445,10 @@ class ReviewService {
     try {
       final data = await supabase
           .from(TABLE_REVIEWS)
-          .select('id', const FetchOptions(count: CountOption.exact))
+          .select('id')
           .eq('overview_id', overviewId);
 
-      return data.length;
+      return (data as List).length;
     } catch (e) {
       return 0;
     }
