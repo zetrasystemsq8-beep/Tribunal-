@@ -197,18 +197,18 @@ class Formatters {
 
 class HashUtils {
   /// Generate SHA256 hash of string
-  static String sha256(String input) {
-    return sha256Digest(input.codeUnits);
+  static String hashSha256(String input) {
+    return _sha256Digest(input.codeUnits);
   }
 
   /// Generate SHA256 hash of bytes
-  static String sha256Digest(List<int> bytes) {
+  static String _sha256Digest(List<int> bytes) {
     return sha256.convert(bytes).toString();
   }
 
   /// Verify content hash
   static bool verifyHash(String content, String hash) {
-    final calculatedHash = sha256(content);
+    final calculatedHash = hashSha256(content);
     return calculatedHash == hash;
   }
 }
@@ -258,11 +258,6 @@ class AppException implements Exception {
 class NetworkException extends AppException {
   NetworkException({String message = 'Network error occurred'})
       : super(message: message, code: 'NETWORK_ERROR');
-}
-
-class AuthException extends AppException {
-  AuthException({String message = 'Authentication failed'})
-      : super(message: message, code: 'AUTH_ERROR');
 }
 
 class ValidationException extends AppException {
