@@ -405,18 +405,13 @@ final searchedOverviewsProvider = FutureProvider<List<Overview>>((ref) async {
 /// Check if current user has already reviewed an overview
 final hasUserReviewedProvider =
     FutureProvider.family<bool, String>((ref, overviewId) async {
-  final userProfile = ref.watch(userProfileProvider);
-  
-  final userDataAsync = await userProfile;
-  if (userDataAsync == null) return false;
+  final userData = await ref.watch(userProfileProvider.future);
+  if (userData == null) return false;
 
-  return ref
-      .watch(expertReviewProvider((overviewId, userDataAsync.id)))
-      .when(
-        data: (review) => review != null,
-        loading: () => false,
-        error: (_, __) => false,
-      );
+  final review = await ref.watch(
+    expertReviewProvider((overviewId, userData.id)).future,
+  );
+  return review != null;
 });
 
 /// Get average review score for display
