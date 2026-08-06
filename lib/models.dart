@@ -292,6 +292,20 @@ class Review {
     return nonZeroScores.reduce((a, b) => a + b) / nonZeroScores.length;
   }
 
+  /// Validates that all required fields for a review submission are filled.
+  bool isValid() {
+    return originality != null &&
+        technicalFeasibility != null &&
+        economicFeasibility != null &&
+        ethics != null &&
+        legalCompliance != null &&
+        socialImpact != null &&
+        environmentalImpact != null &&
+        (strengths?.isNotEmpty ?? false) &&
+        (weaknesses?.isNotEmpty ?? false) &&
+        (recommendation?.isNotEmpty ?? false);
+  }
+
   Review copyWith({
     String? id,
     String? overviewId,
