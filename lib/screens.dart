@@ -5,6 +5,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'config.dart';
 import 'models.dart';
 import 'providers.dart';
@@ -147,8 +148,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
       if (!mounted) return;
 
-      // Navigate to OTP screen
-      Navigator.of(context).pushReplacementNamed(AppRoutes.otp);
+      context.go('/otp');
     } catch (e) {
       setState(() {
         errorMessage = e.toString().replaceFirst('Exception: ', '');
@@ -321,14 +321,13 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
       if (user == null) throw Exception('User not found');
 
       // TODO: Get internal email from somewhere (store during login)
-      // For now, we'll need to refactor auth flow to pass this
       final result = await authService.verifyOtp(
         internalEmail: 'internal_email',
         otpCode: code,
       );
 
       if (result && mounted) {
-        Navigator.of(context).pushReplacementNamed(AppRoutes.home);
+        context.go('/home');
       } else {
         setState(() {
           errorMessage = 'Invalid OTP code';
@@ -675,10 +674,7 @@ class _ImportModalState extends ConsumerState<ImportModal> {
       if (!mounted) return;
 
       Navigator.of(context).pop();
-      Navigator.of(context).pushNamed(
-        AppRoutes.overviewDetail,
-        arguments: overview.id,
-      );
+      context.go('/overview/${overview.id}');
     } catch (e) {
       setState(() {
         errorMessage = e.toString().replaceFirst('Exception: ', '');
@@ -1032,10 +1028,7 @@ class OverviewDetailScreen extends ConsumerWidget {
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: () {
-                        Navigator.of(context).pushNamed(
-                          AppRoutes.reviewForm,
-                          arguments: (overviewId, user.id),
-                        );
+                        context.push('/review/$overviewId/${user.id}');
                       },
                       child: const Text('Submit Your Review'),
                     ),
@@ -1370,7 +1363,7 @@ class _ReviewFormScreenState extends ConsumerState<ReviewFormScreen> {
                       ],
                     ),
                   ),
-                );
+                ),
               );
             }),
             const SizedBox(height: AppSpacing.xxl),
