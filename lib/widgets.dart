@@ -4,6 +4,7 @@
 // ============================================================================
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'config.dart';
 import 'models.dart';
 
@@ -347,10 +348,7 @@ class CaseCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        Navigator.of(context).pushNamed(
-          AppRoutes.overviewDetail,
-          arguments: overview.id,
-        );
+        context.go('/overview/${overview.id}');
       },
       child: Container(
         padding: const EdgeInsets.all(AppSpacing.lg),
