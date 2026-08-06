@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'config.dart';
+import 'models.dart';
 import 'providers.dart';
 import 'screens.dart';
 
