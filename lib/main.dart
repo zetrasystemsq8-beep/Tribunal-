@@ -55,13 +55,23 @@ class TribunalApp extends ConsumerWidget {
             return authState.when(
               data: (user) {
                 if (user == null) return const LoginScreen();
+
+                // Real OTP check — was previously a fake always-true check.
+                // A Supabase session exists the instant signInWithPassword
+                // succeeds, BEFORE OTP is verified — so session presence
+                // alone can never be used to decide the user is fully
+                // logged in. We must check the app-specific
+                // trib_otp_verified flag in user metadata instead.
+                final currentAuthUser =
+                    Supabase.instance.client.auth.currentUser;
                 final otpVerified =
-                    user.id.isNotEmpty;
+                    currentAuthUser?.userMetadata?['trib_otp_verified'] ==
+                        true;
+
                 return otpVerified ? const HomeScreen() : const OtpScreen();
               },
               loading: () => const LoadingScreen(),
-              error: (err, stack) =>
-                  ErrorScreen(error: err.toString()),
+              error: (err, stack) => ErrorScreen(error: err.toString()),
             );
           },
         ),
