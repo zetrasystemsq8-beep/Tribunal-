@@ -92,7 +92,7 @@ class AuthService {
         throw Exception('Login failed');
       }
 
-      await _requestOtp(internalEmail);
+      await _requestOtp();
 
       final profileData = await supabase
           .from(TABLE_PROFILES)
@@ -108,23 +108,24 @@ class AuthService {
     }
   }
 
-  /// Request OTP code (internal RPC call)
-  Future<void> _requestOtp(String internalEmail) async {
+  /// Request OTP code — scoped to this app via p_app_name,
+  /// works off the current auth session (no email param needed)
+  Future<void> _requestOtp() async {
     try {
       await supabase.rpc('request_otp', params: {
-        'p_email': internalEmail,
+        'p_app_name': 'tribunal',
       });
     } catch (e) {
       throw Exception('OTP request failed: $e');
     }
   }
 
-  /// Resend OTP using the last resolved email from sign-in
+  /// Resend OTP for the current session
   Future<void> resendOtp() async {
     if (_lastInternalEmail == null) {
       throw Exception('No pending login session');
     }
-    await _requestOtp(_lastInternalEmail!);
+    await _requestOtp();
   }
 
   /// Verify OTP code and mark user as fully logged in
