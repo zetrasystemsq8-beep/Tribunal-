@@ -15,6 +15,10 @@ final supabase = Supabase.instance.client;
 // ============================================================================
 
 class AuthService {
+  String? _lastInternalEmail;
+  String? get lastInternalEmail => _lastInternalEmail;
+
+  /// Sign up with ZetraMail and password
   Future<UserProfile> signUp({
     required String zetramail,
     required String password,
@@ -61,6 +65,8 @@ class AuthService {
     }
   }
 
+  /// Sign in with ZetraMail and password
+  /// Returns user on success, then requires OTP verification
   Future<UserProfile> signIn({
     required String zetramail,
     required String password,
@@ -75,6 +81,7 @@ class AuthService {
       }
 
       final internalEmail = resolveResult as String;
+      _lastInternalEmail = internalEmail;
 
       final authResponse = await supabase.auth.signInWithPassword(
         email: internalEmail,
@@ -101,6 +108,7 @@ class AuthService {
     }
   }
 
+  /// Request OTP code (internal RPC call)
   Future<void> _requestOtp(String internalEmail) async {
     try {
       await supabase.rpc('request_otp', params: {
@@ -111,6 +119,15 @@ class AuthService {
     }
   }
 
+  /// Resend OTP using the last resolved email from sign-in
+  Future<void> resendOtp() async {
+    if (_lastInternalEmail == null) {
+      throw Exception('No pending login session');
+    }
+    await _requestOtp(_lastInternalEmail!);
+  }
+
+  /// Verify OTP code and mark user as fully logged in
   Future<bool> verifyOtp({
     required String internalEmail,
     required String otpCode,
@@ -140,14 +157,17 @@ class AuthService {
     }
   }
 
+  /// Sign out
   Future<void> signOut() async {
     try {
       await supabase.auth.signOut();
+      _lastInternalEmail = null;
     } catch (e) {
       throw Exception('Sign out failed: $e');
     }
   }
 
+  /// Get current user
   Future<UserProfile?> getCurrentUser() async {
     try {
       final user = supabase.auth.currentUser;
@@ -164,24 +184,6 @@ class AuthService {
       return null;
     }
   }
-
-  Future<void> forgotPassword({required String zetramail}) async {
-    try {
-      final resolveResult = await supabase.rpc('resolve_login_email', params: {
-        'p_identifier': zetramail,
-      });
-
-      if (resolveResult == null) {
-        throw Exception('ZetraMail not found');
-      }
-
-      final internalEmail = resolveResult as String;
-
-      await supabase.auth.resetPasswordForEmail(internalEmail);
-    } catch (e) {
-      throw Exception('Password reset failed: $e');
-    }
-  }
 }
 
 // ============================================================================
@@ -189,6 +191,7 @@ class AuthService {
 // ============================================================================
 
 class OverviewService {
+  /// Fetch overview by ID from Supabase
   Future<Overview> fetchOverviewById(String overviewId) async {
     try {
       final data = await supabase
@@ -208,6 +211,7 @@ class OverviewService {
     }
   }
 
+  /// Fetch all overviews (for browsing)
   Future<List<Overview>> fetchAllOverviews({int limit = 50, int offset = 0}) async {
     try {
       final data = await supabase
@@ -224,6 +228,7 @@ class OverviewService {
     }
   }
 
+  /// Verify overview by content hash (prevents tampering)
   bool verifyOverviewHash(Overview overview) {
     try {
       final snapshotJson = overview.snapshotData.toString();
@@ -234,6 +239,7 @@ class OverviewService {
     }
   }
 
+  /// Import overview by ID (verify + add to Tribunal if new)
   Future<Overview> importOverviewById(String overviewId) async {
     try {
       final existing = await supabase
@@ -258,6 +264,7 @@ class OverviewService {
     }
   }
 
+  /// Search overviews by category
   Future<List<Overview>> searchByCategory(String category) async {
     try {
       final data = await supabase
@@ -274,6 +281,7 @@ class OverviewService {
     }
   }
 
+  /// Search overviews by title/one-liner
   Future<List<Overview>> searchByKeyword(String keyword) async {
     try {
       final data = await supabase
@@ -296,6 +304,7 @@ class OverviewService {
 // ============================================================================
 
 class ReviewService {
+  /// Submit a new review
   Future<Review> submitReview(Review review) async {
     try {
       final existing = await supabase
@@ -333,6 +342,7 @@ class ReviewService {
     }
   }
 
+  /// Update existing review
   Future<Review> updateReview(Review review) async {
     try {
       final data = await supabase
@@ -350,6 +360,7 @@ class ReviewService {
     }
   }
 
+  /// Fetch all reviews for an overview
   Future<List<Review>> fetchReviewsForOverview(String overviewId) async {
     try {
       final data = await supabase
@@ -374,6 +385,7 @@ class ReviewService {
     }
   }
 
+  /// Fetch expert's review for an overview
   Future<Review?> fetchExpertReview(
       String overviewId, String expertId) async {
     try {
@@ -398,6 +410,7 @@ class ReviewService {
     }
   }
 
+  /// Delete review
   Future<void> deleteReview(String reviewId) async {
     try {
       await supabase.from(TABLE_REVIEWS).delete().eq('id', reviewId);
@@ -406,6 +419,7 @@ class ReviewService {
     }
   }
 
+  /// Get review count for overview
   Future<int> getReviewCount(String overviewId) async {
     try {
       final data = await supabase
@@ -419,6 +433,7 @@ class ReviewService {
     }
   }
 
+  /// Helper: Fetch profile for review author
   Future<UserProfile?> _fetchProfileForReview(String userId) async {
     try {
       final data = await supabase
@@ -440,6 +455,7 @@ class ReviewService {
 // ============================================================================
 
 class ReportService {
+  /// Generate final report from reviews
   Future<FinalReport> generateFinalReport(
     String overviewId,
     List<Review> reviews,
@@ -479,6 +495,7 @@ class ReportService {
     }
   }
 
+  /// Fetch final report for overview
   Future<FinalReport?> fetchFinalReport(String overviewId) async {
     try {
       final data = await supabase
@@ -626,6 +643,7 @@ class ReportService {
 // ============================================================================
 
 class ProfileService {
+  /// Update user profile
   Future<UserProfile> updateProfile({
     required String userId,
     String? username,
@@ -651,6 +669,7 @@ class ProfileService {
     }
   }
 
+  /// Fetch user profile
   Future<UserProfile?> fetchProfile(String userId) async {
     try {
       final data = await supabase
@@ -667,6 +686,7 @@ class ProfileService {
   }
 }
 
+// Simple UUID generator
 class Uuid {
   const Uuid();
 
