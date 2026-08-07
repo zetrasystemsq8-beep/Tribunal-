@@ -3,8 +3,9 @@
 // TRIBUNAL: All UI Screens
 // ============================================================================
 
+import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show Clipboard, ClipboardData;
+import 'package:flutter/services.dart' show Clipboard;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'config.dart';
@@ -15,72 +16,219 @@ import 'utils.dart';
 import 'widgets.dart';
 
 // ============================================================================
-// SHARED GRADIENT HEADER
+// DARK BRAND PALETTE (Login / OTP only)
 // ============================================================================
 
-class _BrandHeader extends StatelessWidget {
-  final String title;
-  final String subtitle;
+class _Dark {
+  static const bgTop = Color(0xFF0B0F14);
+  static const bgBottom = Color(0xFF141B23);
+  static const card = Color(0xFF1B2530);
+  static const cardBorder = Color(0xFF2A3844);
+  static const accentStart = Color(0xFF3B82F6);
+  static const accentEnd = Color(0xFF60A5FA);
+  static const textPrimary = Color(0xFFF5F7FA);
+  static const textSecondary = Color(0xFF8B96A3);
+  static const textMuted = Color(0xFF5C6773);
+}
 
-  const _BrandHeader({required this.title, required this.subtitle});
+class _BlobBackground extends StatelessWidget {
+  final Widget child;
+  const _BlobBackground({required this.child});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.lg,
-        AppSpacing.xxl,
-        AppSpacing.lg,
-        AppSpacing.xxl,
-      ),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppColors.primaryDark, AppColors.primary],
-        ),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(28),
-          bottomRight: Radius.circular(28),
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [_Dark.bgTop, _Dark.bgBottom],
         ),
       ),
-      child: Column(
+      child: Stack(
         children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: Colors.white.withOpacity(0.3)),
-            ),
-            child: const Icon(
-              Icons.gavel_rounded,
-              color: Colors.white,
-              size: 32,
-            ),
+          Positioned(
+            top: -90,
+            right: -70,
+            child: _blob(220, _Dark.accentStart.withOpacity(0.22)),
           ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 26,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.2,
-            ),
+          Positioned(
+            bottom: -110,
+            left: -80,
+            child: _blob(260, _Dark.accentEnd.withOpacity(0.16)),
           ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            subtitle,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.85),
-              fontSize: 13,
-            ),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _blob(double size, Color color) {
+    return ClipRRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 1, sigmaY: 1),
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+        ),
+      ),
+    );
+  }
+}
+
+class _GlowMark extends StatelessWidget {
+  const _GlowMark();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 84,
+      height: 84,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [_Dark.accentStart, _Dark.accentEnd],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: _Dark.accentStart.withOpacity(0.45),
+            blurRadius: 32,
+            spreadRadius: 2,
           ),
         ],
+      ),
+      child: const Icon(Icons.gavel_rounded, color: Colors.white, size: 38),
+    );
+  }
+}
+
+class _DarkField extends StatelessWidget {
+  final TextEditingController controller;
+  final String hint;
+  final IconData icon;
+  final bool obscure;
+  final Widget? suffix;
+  final TextInputType? keyboardType;
+  final bool enabled;
+  final ValueChanged<String>? onSubmitted;
+
+  const _DarkField({
+    required this.controller,
+    required this.hint,
+    required this.icon,
+    this.obscure = false,
+    this.suffix,
+    this.keyboardType,
+    this.enabled = true,
+    this.onSubmitted,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: _Dark.card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _Dark.cardBorder),
+      ),
+      child: TextField(
+        controller: controller,
+        obscureText: obscure,
+        enabled: enabled,
+        keyboardType: keyboardType,
+        onSubmitted: onSubmitted,
+        style: const TextStyle(color: _Dark.textPrimary, fontSize: 15),
+        cursorColor: _Dark.accentEnd,
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: const TextStyle(color: _Dark.textMuted, fontSize: 15),
+          prefixIcon: Icon(icon, color: _Dark.textSecondary, size: 20),
+          suffixIcon: suffix,
+          filled: false,
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: 18,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GradientButton extends StatelessWidget {
+  final String label;
+  final IconData? trailingIcon;
+  final bool isLoading;
+  final VoidCallback? onPressed;
+
+  const _GradientButton({
+    required this.label,
+    this.trailingIcon,
+    this.isLoading = false,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final disabled = onPressed == null;
+    return Opacity(
+      opacity: disabled ? 0.6 : 1,
+      child: Container(
+        height: 56,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: const LinearGradient(
+            colors: [_Dark.accentStart, _Dark.accentEnd],
+          ),
+          boxShadow: disabled
+              ? []
+              : [
+                  BoxShadow(
+                    color: _Dark.accentStart.withOpacity(0.35),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: onPressed,
+            child: Center(
+              child: isLoading
+                  ? const SizedBox(
+                      height: 22,
+                      width: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.4,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          label,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        if (trailingIcon != null) ...[
+                          const SizedBox(width: 8),
+                          Icon(trailingIcon, color: Colors.white, size: 18),
+                        ],
+                      ],
+                    ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -95,26 +243,11 @@ class LoadingScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.neutral50,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const CircularProgressIndicator(
-              color: AppColors.primary,
-              strokeWidth: 2.5,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            Text(
-              'Loading Tribunal...',
-              style: TextStyle(
-                fontSize: 14,
-                color: AppColors.neutral500,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
+    return _BlobBackground(
+      child: const Center(
+        child: CircularProgressIndicator(
+          color: _Dark.accentEnd,
+          strokeWidth: 2.5,
         ),
       ),
     );
@@ -132,9 +265,8 @@ class ErrorScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.neutral50,
-      body: Center(
+    return _BlobBackground(
+      child: Center(
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.xl),
           child: Column(
@@ -144,7 +276,7 @@ class ErrorScreen extends StatelessWidget {
                 width: 72,
                 height: 72,
                 decoration: BoxDecoration(
-                  color: AppColors.error.withOpacity(0.1),
+                  color: AppColors.error.withOpacity(0.15),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -154,28 +286,27 @@ class ErrorScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
-              Text(
+              const Text(
                 'Something went wrong',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                style: TextStyle(
+                  color: _Dark.textPrimary,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: AppSpacing.sm),
               Text(
                 error,
-                style: const TextStyle(
-                  color: AppColors.neutral500,
-                  fontSize: 14,
-                ),
+                style: const TextStyle(color: _Dark.textSecondary, fontSize: 14),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: AppSpacing.xl),
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
+                child: _GradientButton(
+                  label: 'Back to Sign In',
                   onPressed: () => context.go('/login'),
-                  child: const Text('Back to Sign In'),
                 ),
               ),
             ],
@@ -250,143 +381,105 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.neutral50,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const _BrandHeader(
-                title: 'Tribunal',
-                subtitle: 'Where validated ideas meet expert judgment',
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.lg,
-                  AppSpacing.xl,
-                  AppSpacing.lg,
-                  AppSpacing.lg,
+      backgroundColor: _Dark.bgTop,
+      body: _BlobBackground(
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.xxl,
+              AppSpacing.lg,
+              AppSpacing.lg,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: AppSpacing.xl),
+                const Center(child: _GlowMark()),
+                const SizedBox(height: AppSpacing.lg),
+                const Text(
+                  'Welcome back',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: _Dark.textPrimary,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.2,
+                  ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
+                const SizedBox(height: AppSpacing.xs),
+                const Text(
+                  'Sign in with your ZetraMail address',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: _Dark.textSecondary, fontSize: 13.5),
+                ),
+                const SizedBox(height: AppSpacing.xxl),
+                _DarkField(
+                  controller: zetraMailController,
+                  hint: 'ZetraMail address',
+                  icon: Icons.alternate_email_rounded,
+                  keyboardType: TextInputType.emailAddress,
+                  enabled: !isLoading,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                _DarkField(
+                  controller: passwordController,
+                  hint: 'Password',
+                  icon: Icons.lock_outline_rounded,
+                  obscure: obscurePassword,
+                  enabled: !isLoading,
+                  onSubmitted: (_) => _handleLogin(),
+                  suffix: IconButton(
+                    icon: Icon(
+                      obscurePassword
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
+                      color: _Dark.textSecondary,
+                      size: 20,
+                    ),
+                    onPressed: () {
+                      setState(() => obscurePassword = !obscurePassword);
+                    },
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: const [
+                    Icon(Icons.shield_outlined, size: 14, color: _Dark.textMuted),
+                    SizedBox(width: 6),
                     Text(
-                      'Sign in',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      'Use your ZetraMail credentials to continue',
-                      style: const TextStyle(
-                        color: AppColors.neutral500,
-                        fontSize: 13,
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xl),
-                    _FieldLabel('ZetraMail Address'),
-                    const SizedBox(height: AppSpacing.sm),
-                    TextField(
-                      controller: zetraMailController,
-                      decoration: InputDecoration(
-                        hintText: 'you@zetramail.ng',
-                        prefixIcon: const Icon(
-                          Icons.alternate_email_rounded,
-                          color: AppColors.neutral400,
-                          size: 20,
-                        ),
-                      ),
-                      keyboardType: TextInputType.emailAddress,
-                      enabled: !isLoading,
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    _FieldLabel('Password'),
-                    const SizedBox(height: AppSpacing.sm),
-                    TextField(
-                      controller: passwordController,
-                      decoration: InputDecoration(
-                        hintText: '••••••••',
-                        prefixIcon: const Icon(
-                          Icons.lock_outline_rounded,
-                          color: AppColors.neutral400,
-                          size: 20,
-                        ),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            obscurePassword
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined,
-                            color: AppColors.neutral400,
-                            size: 20,
-                          ),
-                          onPressed: () {
-                            setState(() => obscurePassword = !obscurePassword);
-                          },
-                        ),
-                      ),
-                      obscureText: obscurePassword,
-                      enabled: !isLoading,
-                      onSubmitted: (_) => _handleLogin(),
-                    ),
-                    if (errorMessage != null) ...[
-                      const SizedBox(height: AppSpacing.lg),
-                      _ErrorCard(message: errorMessage!),
-                    ],
-                    const SizedBox(height: AppSpacing.xl),
-                    SizedBox(
-                      height: 52,
-                      child: ElevatedButton(
-                        onPressed: isLoading ? null : _handleLogin,
-                        style: ElevatedButton.styleFrom(
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
-                        child: isLoading
-                            ? const SizedBox(
-                                height: 22,
-                                width: 22,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.4,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    Colors.white,
-                                  ),
-                                ),
-                              )
-                            : const Text(
-                                'Sign In',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.xl),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.shield_outlined,
-                          size: 14,
-                          color: AppColors.neutral400,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Reviewer access is by invitation only',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.neutral400,
-                          ),
-                        ),
-                      ],
+                      'Secured by your Zetra ID',
+                      style: TextStyle(fontSize: 12, color: _Dark.textMuted),
                     ),
                   ],
                 ),
-              ),
-            ],
+                if (errorMessage != null) ...[
+                  const SizedBox(height: AppSpacing.lg),
+                  _DarkErrorCard(message: errorMessage!),
+                ],
+                const SizedBox(height: AppSpacing.xxl),
+                _GradientButton(
+                  label: 'Log In',
+                  trailingIcon: Icons.arrow_forward_rounded,
+                  isLoading: isLoading,
+                  onPressed: isLoading ? null : _handleLogin,
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: const [
+                    Icon(Icons.lock_person_outlined,
+                        size: 13, color: _Dark.textMuted),
+                    SizedBox(width: 6),
+                    Text(
+                      'Reviewer access is by invitation only',
+                      style: TextStyle(fontSize: 11.5, color: _Dark.textMuted),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -394,51 +487,31 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 }
 
-class _FieldLabel extends StatelessWidget {
-  final String label;
-  const _FieldLabel(this.label);
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      label,
-      style: const TextStyle(
-        fontSize: 13,
-        fontWeight: FontWeight.w600,
-        color: AppColors.neutral700,
-      ),
-    );
-  }
-}
-
-class _ErrorCard extends StatelessWidget {
+class _DarkErrorCard extends StatelessWidget {
   final String message;
-  const _ErrorCard({required this.message});
+  const _DarkErrorCard({required this.message});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.error.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: AppColors.error.withOpacity(0.3)),
+        color: AppColors.error.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.error.withOpacity(0.4)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(
-            Icons.error_outline_rounded,
-            color: AppColors.error,
-            size: 18,
-          ),
+          const Icon(Icons.error_outline_rounded,
+              color: Color(0xFFFF8A8A), size: 18),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
               message,
               style: const TextStyle(
-                color: AppColors.error,
-                fontSize: 13,
+                color: Color(0xFFFF8A8A),
+                fontSize: 12.5,
                 height: 1.4,
               ),
             ),
@@ -462,7 +535,6 @@ class OtpScreen extends ConsumerStatefulWidget {
 
 class _OtpScreenState extends ConsumerState<OtpScreen> {
   late TextEditingController codeController;
-  final FocusNode codeFocusNode = FocusNode();
   String? errorMessage;
   bool isLoading = false;
   bool isResending = false;
@@ -476,7 +548,6 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
   @override
   void dispose() {
     codeController.dispose();
-    codeFocusNode.dispose();
     super.dispose();
   }
 
@@ -484,9 +555,8 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     final data = await Clipboard.getData('text/plain');
     if (data?.text != null) {
       final digitsOnly = data!.text!.replaceAll(RegExp(r'\D'), '');
-      final code = digitsOnly.length > 6
-          ? digitsOnly.substring(0, 6)
-          : digitsOnly;
+      final code =
+          digitsOnly.length > 6 ? digitsOnly.substring(0, 6) : digitsOnly;
       codeController.text = code;
       setState(() {});
     }
@@ -566,165 +636,152 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.neutral50,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const _BrandHeader(
-                title: 'Check your ZetraMail',
-                subtitle: 'A 6-digit verification code is on its way',
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.lg,
-                  AppSpacing.xl,
-                  AppSpacing.lg,
-                  AppSpacing.lg,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      'Enter verification code',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    const Text(
-                      'Open your ZetraMail inbox, copy the code, and paste it below.',
-                      style: TextStyle(
-                        color: AppColors.neutral500,
-                        fontSize: 13,
-                        height: 1.4,
+      backgroundColor: _Dark.bgTop,
+      body: _BlobBackground(
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.xxl,
+              AppSpacing.lg,
+              AppSpacing.lg,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: AppSpacing.xl),
+                Center(
+                  child: Container(
+                    width: 84,
+                    height: 84,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(22),
+                      gradient: const LinearGradient(
+                        colors: [_Dark.accentStart, _Dark.accentEnd],
                       ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: _Dark.accentStart.withOpacity(0.45),
+                          blurRadius: 32,
+                          spreadRadius: 2,
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: AppSpacing.xl),
-                    TextField(
-                      controller: codeController,
-                      focusNode: codeFocusNode,
-                      enabled: !isLoading,
-                      keyboardType: TextInputType.number,
-                      maxLength: 6,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
+                    child: const Icon(
+                      Icons.mark_email_read_outlined,
+                      color: Colors.white,
+                      size: 36,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                const Text(
+                  'Check your ZetraMail',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: _Dark.textPrimary,
+                    fontSize: 26,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                const Text(
+                  'Copy the 6-digit code from your inbox and paste it below',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: _Dark.textSecondary, fontSize: 13.5, height: 1.4),
+                ),
+                const SizedBox(height: AppSpacing.xxl),
+                Container(
+                  decoration: BoxDecoration(
+                    color: _Dark.card,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: _Dark.cardBorder),
+                  ),
+                  child: TextField(
+                    controller: codeController,
+                    enabled: !isLoading,
+                    keyboardType: TextInputType.number,
+                    maxLength: 6,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 10,
+                      color: _Dark.textPrimary,
+                    ),
+                    cursorColor: _Dark.accentEnd,
+                    decoration: const InputDecoration(
+                      counterText: '',
+                      hintText: '000000',
+                      hintStyle: TextStyle(
                         fontSize: 26,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 10,
-                        color: AppColors.neutral900,
+                        color: _Dark.textMuted,
                       ),
-                      decoration: InputDecoration(
-                        counterText: '',
-                        hintText: '000000',
-                        hintStyle: const TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 10,
-                          color: AppColors.neutral300,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          vertical: AppSpacing.lg,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(
-                            color: AppColors.neutral200,
-                          ),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(
-                            color: AppColors.neutral200,
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(
-                            color: AppColors.primary,
-                            width: 1.5,
-                          ),
-                        ),
-                      ),
-                      onChanged: (_) => setState(() {}),
+                      border: InputBorder.none,
+                      contentPadding:
+                          EdgeInsets.symmetric(vertical: AppSpacing.lg),
                     ),
-                    const SizedBox(height: AppSpacing.md),
-                    SizedBox(
-                      height: 44,
-                      child: OutlinedButton.icon(
-                        onPressed: isLoading ? null : _pasteFromClipboard,
-                        icon: const Icon(Icons.content_paste_rounded, size: 18),
-                        label: const Text('Paste code'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.primary,
-                          side: const BorderSide(color: AppColors.neutral200),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                    ),
-                    if (errorMessage != null) ...[
-                      const SizedBox(height: AppSpacing.lg),
-                      _ErrorCard(message: errorMessage!),
-                    ],
-                    const SizedBox(height: AppSpacing.xl),
-                    SizedBox(
-                      height: 52,
-                      child: ElevatedButton(
-                        onPressed: isLoading ? null : _handleVerifyOtp,
-                        style: ElevatedButton.styleFrom(
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
-                        child: isLoading
-                            ? const SizedBox(
-                                height: 22,
-                                width: 22,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.4,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    Colors.white,
-                                  ),
-                                ),
-                              )
-                            : const Text(
-                                'Verify & Continue',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    Center(
-                      child: TextButton(
-                        onPressed: isResending ? null : _handleResend,
-                        child: isResending
-                            ? const SizedBox(
-                                height: 16,
-                                width: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Text(
-                                "Didn't get a code? Resend",
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                      ),
-                    ),
-                  ],
+                    onChanged: (_) => setState(() {}),
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: AppSpacing.md),
+                SizedBox(
+                  height: 48,
+                  child: OutlinedButton.icon(
+                    onPressed: isLoading ? null : _pasteFromClipboard,
+                    icon: const Icon(Icons.content_paste_rounded,
+                        size: 18, color: _Dark.textSecondary),
+                    label: const Text(
+                      'Paste code',
+                      style: TextStyle(color: _Dark.textSecondary),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: _Dark.cardBorder),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
+                ),
+                if (errorMessage != null) ...[
+                  const SizedBox(height: AppSpacing.lg),
+                  _DarkErrorCard(message: errorMessage!),
+                ],
+                const SizedBox(height: AppSpacing.xl),
+                _GradientButton(
+                  label: 'Verify & Continue',
+                  trailingIcon: Icons.arrow_forward_rounded,
+                  isLoading: isLoading,
+                  onPressed: isLoading ? null : _handleVerifyOtp,
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                Center(
+                  child: TextButton(
+                    onPressed: isResending ? null : _handleResend,
+                    child: isResending
+                        ? const SizedBox(
+                            height: 16,
+                            width: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(_Dark.accentEnd),
+                            ),
+                          )
+                        : const Text(
+                            "Didn't get a code? Resend",
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: _Dark.accentEnd,
+                            ),
+                          ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
