@@ -719,6 +719,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                         letterSpacing: 10,
                         color: _Dark.textMuted,
                       ),
+                      filled: false,
                       border: InputBorder.none,
                       contentPadding:
                           EdgeInsets.symmetric(vertical: AppSpacing.lg),
