@@ -1,4 +1,3 @@
-// config.dart
 import 'package:flutter/material.dart';
 
 // Read from environment variables (set in GitHub Secrets via --dart-define)
@@ -28,7 +27,7 @@ class AppRoutes {
 }
 
 // ============================================================================
-// UI CONSTANTS
+// UI CONSTANTS — LIGHT (used across app screens)
 // ============================================================================
 
 class AppColors {
@@ -47,6 +46,23 @@ class AppColors {
   static const Color neutral700 = Color(0xFF374151);
   static const Color neutral800 = Color(0xFF1F2937);
   static const Color neutral900 = Color(0xFF111827);
+}
+
+// ============================================================================
+// UI CONSTANTS — DARK AUTH THEME (Login + OTP only)
+// ============================================================================
+
+class AuthColors {
+  static const Color background = Color(0xFF0B1120);
+  static const Color surface = Color(0xFF161F32);
+  static const Color surfaceBorder = Color(0xFF2A3550);
+  static const Color accentStart = Color(0xFF2563EB);
+  static const Color accentEnd = Color(0xFF60A5FA);
+  static const Color blob = Color(0xFF1D2B4D);
+  static const Color textPrimary = Colors.white;
+  static const Color textSecondary = Color(0xFF9AA5C0);
+  static const Color textFaint = Color(0xFF6B7690);
+  static const Color error = Color(0xFFFF6B6B);
 }
 
 class AppSpacing {
