@@ -4,6 +4,7 @@
 // ============================================================================
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'config.dart';
@@ -12,6 +13,78 @@ import 'providers.dart';
 import 'services.dart';
 import 'utils.dart';
 import 'widgets.dart';
+
+// ============================================================================
+// SHARED GRADIENT HEADER
+// ============================================================================
+
+class _BrandHeader extends StatelessWidget {
+  final String title;
+  final String subtitle;
+
+  const _BrandHeader({required this.title, required this.subtitle});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.lg,
+        AppSpacing.xxl,
+        AppSpacing.lg,
+        AppSpacing.xxl,
+      ),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppColors.primaryDark, AppColors.primary],
+        ),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(28),
+          bottomRight: Radius.circular(28),
+        ),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: Colors.white.withOpacity(0.3)),
+            ),
+            child: const Icon(
+              Icons.gavel_rounded,
+              color: Colors.white,
+              size: 32,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 26,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.2,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            subtitle,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.85),
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 // ============================================================================
 // LOADING SCREEN
@@ -23,19 +96,22 @@ class LoadingScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.neutral50,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(
+            const CircularProgressIndicator(
               color: AppColors.primary,
+              strokeWidth: 2.5,
             ),
             const SizedBox(height: AppSpacing.lg),
-            const Text(
+            Text(
               'Loading Tribunal...',
               style: TextStyle(
-                fontSize: 16,
-                color: AppColors.neutral600,
+                fontSize: 14,
+                color: AppColors.neutral500,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ],
@@ -57,36 +133,50 @@ class ErrorScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.neutral50,
       body: Center(
         child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.lg),
+          padding: const EdgeInsets.all(AppSpacing.xl),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
-                Icons.error_outline,
-                size: 48,
-                color: AppColors.error,
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  color: AppColors.error.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.error_outline_rounded,
+                  size: 36,
+                  color: AppColors.error,
+                ),
               ),
               const SizedBox(height: AppSpacing.lg),
               Text(
                 'Something went wrong',
-                style: Theme.of(context).textTheme.headlineSmall,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: AppSpacing.md),
+              const SizedBox(height: AppSpacing.sm),
               Text(
                 error,
                 style: const TextStyle(
-                  color: AppColors.neutral600,
+                  color: AppColors.neutral500,
                   fontSize: 14,
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: AppSpacing.lg),
-              ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Go Back'),
+              const SizedBox(height: AppSpacing.xl),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => context.go('/login'),
+                  child: const Text('Back to Sign In'),
+                ),
               ),
             ],
           ),
@@ -111,6 +201,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   late TextEditingController zetraMailController;
   late TextEditingController passwordController;
   bool isLoading = false;
+  bool obscurePassword = true;
   String? errorMessage;
 
   @override
@@ -128,7 +219,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   void _handleLogin() async {
-    if (zetraMailController.text.isEmpty ||
+    if (zetraMailController.text.trim().isEmpty ||
         passwordController.text.isEmpty) {
       setState(() => errorMessage = 'Please fill in all fields');
       return;
@@ -141,13 +232,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     try {
       final authService = ref.read(authServiceProvider);
-      final user = await authService.signIn(
-        zetramail: zetraMailController.text,
+      await authService.signIn(
+        zetramail: zetraMailController.text.trim(),
         password: passwordController.text,
       );
 
       if (!mounted) return;
-
       context.go('/otp');
     } catch (e) {
       setState(() {
@@ -160,112 +250,200 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Tribunal'),
-        centerTitle: true,
-        elevation: 0,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SizedBox(height: AppSpacing.xl),
-            Text(
-              'Welcome to Tribunal',
-              style: Theme.of(context).textTheme.headlineSmall,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            const Text(
-              'Where validated ideas meet expert judgment',
-              style: TextStyle(
-                color: AppColors.neutral600,
-                fontSize: 14,
+      backgroundColor: AppColors.neutral50,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const _BrandHeader(
+                title: 'Tribunal',
+                subtitle: 'Where validated ideas meet expert judgment',
               ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppSpacing.xxl),
-            TextField(
-              controller: zetraMailController,
-              decoration: InputDecoration(
-                labelText: 'ZetraMail Address',
-                hintText: 'your@zetramail.com',
-                prefixIcon: const Icon(Icons.email_outlined),
-              ),
-              keyboardType: TextInputType.emailAddress,
-              enabled: !isLoading,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            TextField(
-              controller: passwordController,
-              decoration: InputDecoration(
-                labelText: 'Password',
-                prefixIcon: const Icon(Icons.lock_outlined),
-              ),
-              obscureText: true,
-              enabled: !isLoading,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            if (errorMessage != null)
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: BoxDecoration(
-                  color: AppColors.error.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                  border: Border.all(color: AppColors.error),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  AppSpacing.xl,
+                  AppSpacing.lg,
+                  AppSpacing.lg,
                 ),
-                child: Text(
-                  errorMessage!,
-                  style: const TextStyle(color: AppColors.error),
-                ),
-              ),
-            const SizedBox(height: AppSpacing.lg),
-            ElevatedButton(
-              onPressed: isLoading ? null : _handleLogin,
-              child: isLoading
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor:
-                            AlwaysStoppedAnimation<Color>(AppColors.primary),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'Sign in',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      'Use your ZetraMail credentials to continue',
+                      style: const TextStyle(
+                        color: AppColors.neutral500,
+                        fontSize: 13,
                       ),
-                    )
-                  : const Text('Sign In'),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            Center(
-              child: TextButton(
-                onPressed: () {
-                  // TODO: Navigate to forgot password
-                },
-                child: const Text('Forgot your password?'),
+                    ),
+                    const SizedBox(height: AppSpacing.xl),
+                    _FieldLabel('ZetraMail Address'),
+                    const SizedBox(height: AppSpacing.sm),
+                    TextField(
+                      controller: zetraMailController,
+                      decoration: InputDecoration(
+                        hintText: 'you@zetramail.ng',
+                        prefixIcon: const Icon(
+                          Icons.alternate_email_rounded,
+                          color: AppColors.neutral400,
+                          size: 20,
+                        ),
+                      ),
+                      keyboardType: TextInputType.emailAddress,
+                      enabled: !isLoading,
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    _FieldLabel('Password'),
+                    const SizedBox(height: AppSpacing.sm),
+                    TextField(
+                      controller: passwordController,
+                      decoration: InputDecoration(
+                        hintText: '••••••••',
+                        prefixIcon: const Icon(
+                          Icons.lock_outline_rounded,
+                          color: AppColors.neutral400,
+                          size: 20,
+                        ),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            obscurePassword
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                            color: AppColors.neutral400,
+                            size: 20,
+                          ),
+                          onPressed: () {
+                            setState(() => obscurePassword = !obscurePassword);
+                          },
+                        ),
+                      ),
+                      obscureText: obscurePassword,
+                      enabled: !isLoading,
+                      onSubmitted: (_) => _handleLogin(),
+                    ),
+                    if (errorMessage != null) ...[
+                      const SizedBox(height: AppSpacing.lg),
+                      _ErrorCard(message: errorMessage!),
+                    ],
+                    const SizedBox(height: AppSpacing.xl),
+                    SizedBox(
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: isLoading ? null : _handleLogin,
+                        style: ElevatedButton.styleFrom(
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: isLoading
+                            ? const SizedBox(
+                                height: 22,
+                                width: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.4,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
+                                  ),
+                                ),
+                              )
+                            : const Text(
+                                'Sign In',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xl),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.shield_outlined,
+                          size: 14,
+                          color: AppColors.neutral400,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Reviewer access is by invitation only',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.neutral400,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            const Divider(),
-            const SizedBox(height: AppSpacing.lg),
-            Center(
-              child: Text(
-                "Don't have an account?",
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            ElevatedButton(
-              onPressed: () {
-                // TODO: Navigate to signup
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.neutral100,
-                foregroundColor: AppColors.primary,
-              ),
-              child: const Text('Create Account'),
-            ),
-          ],
+            ],
+          ),
         ),
+      ),
+    );
+  }
+}
+
+class _FieldLabel extends StatelessWidget {
+  final String label;
+  const _FieldLabel(this.label);
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      style: const TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: AppColors.neutral700,
+      ),
+    );
+  }
+}
+
+class _ErrorCard extends StatelessWidget {
+  final String message;
+  const _ErrorCard({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.error.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.error.withOpacity(0.3)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.error_outline_rounded,
+            color: AppColors.error,
+            size: 18,
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                color: AppColors.error,
+                fontSize: 13,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -283,29 +461,42 @@ class OtpScreen extends ConsumerStatefulWidget {
 }
 
 class _OtpScreenState extends ConsumerState<OtpScreen> {
-  late List<TextEditingController> codeControllers;
+  late TextEditingController codeController;
+  final FocusNode codeFocusNode = FocusNode();
   String? errorMessage;
   bool isLoading = false;
+  bool isResending = false;
 
   @override
   void initState() {
     super.initState();
-    codeControllers = List.generate(6, (_) => TextEditingController());
+    codeController = TextEditingController();
   }
 
   @override
   void dispose() {
-    for (final controller in codeControllers) {
-      controller.dispose();
-    }
+    codeController.dispose();
+    codeFocusNode.dispose();
     super.dispose();
   }
 
+  Future<void> _pasteFromClipboard() async {
+    final data = await Clipboard.getData('text/plain');
+    if (data?.text != null) {
+      final digitsOnly = data!.text!.replaceAll(RegExp(r'\D'), '');
+      final code = digitsOnly.length > 6
+          ? digitsOnly.substring(0, 6)
+          : digitsOnly;
+      codeController.text = code;
+      setState(() {});
+    }
+  }
+
   void _handleVerifyOtp() async {
-    final code = codeControllers.map((c) => c.text).join();
+    final code = codeController.text.trim();
 
     if (code.length != 6) {
-      setState(() => errorMessage = 'Please enter all 6 digits');
+      setState(() => errorMessage = 'Enter the 6-digit code');
       return;
     }
 
@@ -316,21 +507,24 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
 
     try {
       final authService = ref.read(authServiceProvider);
-      final user = ref.read(authProvider).value;
+      final internalEmail = authService.lastInternalEmail;
 
-      if (user == null) throw Exception('User not found');
+      if (internalEmail == null) {
+        throw Exception('Session expired. Please sign in again.');
+      }
 
-      // TODO: Get internal email from somewhere (store during login)
       final result = await authService.verifyOtp(
-        internalEmail: 'internal_email',
+        internalEmail: internalEmail,
         otpCode: code,
       );
 
-      if (result && mounted) {
+      if (!mounted) return;
+
+      if (result) {
         context.go('/home');
       } else {
         setState(() {
-          errorMessage = 'Invalid OTP code';
+          errorMessage = 'Incorrect code. Please try again.';
           isLoading = false;
         });
       }
@@ -342,87 +536,196 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     }
   }
 
+  void _handleResend() async {
+    setState(() {
+      isResending = true;
+      errorMessage = null;
+    });
+
+    try {
+      final authService = ref.read(authServiceProvider);
+      await authService.resendOtp();
+
+      if (!mounted) return;
+      setState(() => isResending = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('A new code has been sent to your ZetraMail'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      setState(() {
+        errorMessage = e.toString().replaceFirst('Exception: ', '');
+        isResending = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Verify Your Code'),
-        centerTitle: true,
-        elevation: 0,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SizedBox(height: AppSpacing.xl),
-            const Text(
-              'Enter the 6-digit code sent to your email',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AppColors.neutral600,
-                fontSize: 14,
+      backgroundColor: AppColors.neutral50,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const _BrandHeader(
+                title: 'Check your ZetraMail',
+                subtitle: 'A 6-digit verification code is on its way',
               ),
-            ),
-            const SizedBox(height: AppSpacing.xxl),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: List.generate(
-                6,
-                (index) => SizedBox(
-                  width: 48,
-                  height: 48,
-                  child: TextField(
-                    controller: codeControllers[index],
-                    textAlign: TextAlign.center,
-                    keyboardType: TextInputType.number,
-                    maxLength: 1,
-                    enabled: !isLoading,
-                    decoration: InputDecoration(
-                      counterText: '',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(AppRadius.md),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  AppSpacing.xl,
+                  AppSpacing.lg,
+                  AppSpacing.lg,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'Enter verification code',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    const Text(
+                      'Open your ZetraMail inbox, copy the code, and paste it below.',
+                      style: TextStyle(
+                        color: AppColors.neutral500,
+                        fontSize: 13,
+                        height: 1.4,
                       ),
                     ),
-                    onChanged: (value) {
-                      if (value.isNotEmpty && index < 5) {
-                        FocusScope.of(context).nextFocus();
-                      }
-                    },
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            if (errorMessage != null)
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: BoxDecoration(
-                  color: AppColors.error.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                  border: Border.all(color: AppColors.error),
-                ),
-                child: Text(
-                  errorMessage!,
-                  style: const TextStyle(color: AppColors.error),
-                ),
-              ),
-            const SizedBox(height: AppSpacing.lg),
-            ElevatedButton(
-              onPressed: isLoading ? null : _handleVerifyOtp,
-              child: isLoading
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor:
-                            AlwaysStoppedAnimation<Color>(AppColors.primary),
+                    const SizedBox(height: AppSpacing.xl),
+                    TextField(
+                      controller: codeController,
+                      focusNode: codeFocusNode,
+                      enabled: !isLoading,
+                      keyboardType: TextInputType.number,
+                      maxLength: 6,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 10,
+                        color: AppColors.neutral900,
                       ),
-                    )
-                  : const Text('Verify'),
-            ),
-          ],
+                      decoration: InputDecoration(
+                        counterText: '',
+                        hintText: '000000',
+                        hintStyle: const TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 10,
+                          color: AppColors.neutral300,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: AppSpacing.lg,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(
+                            color: AppColors.neutral200,
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(
+                            color: AppColors.neutral200,
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(
+                            color: AppColors.primary,
+                            width: 1.5,
+                          ),
+                        ),
+                      ),
+                      onChanged: (_) => setState(() {}),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    SizedBox(
+                      height: 44,
+                      child: OutlinedButton.icon(
+                        onPressed: isLoading ? null : _pasteFromClipboard,
+                        icon: const Icon(Icons.content_paste_rounded, size: 18),
+                        label: const Text('Paste code'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.primary,
+                          side: const BorderSide(color: AppColors.neutral200),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (errorMessage != null) ...[
+                      const SizedBox(height: AppSpacing.lg),
+                      _ErrorCard(message: errorMessage!),
+                    ],
+                    const SizedBox(height: AppSpacing.xl),
+                    SizedBox(
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: isLoading ? null : _handleVerifyOtp,
+                        style: ElevatedButton.styleFrom(
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: isLoading
+                            ? const SizedBox(
+                                height: 22,
+                                width: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.4,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
+                                  ),
+                                ),
+                              )
+                            : const Text(
+                                'Verify & Continue',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    Center(
+                      child: TextButton(
+                        onPressed: isResending ? null : _handleResend,
+                        child: isResending
+                            ? const SizedBox(
+                                height: 16,
+                                width: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text(
+                                "Didn't get a code? Resend",
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -478,9 +781,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ? IconButton(
                             icon: const Icon(Icons.clear),
                             onPressed: () {
-                              ref
-                                  .read(searchProvider.notifier)
-                                  .clear();
+                              ref.read(searchProvider.notifier).clear();
                             },
                           )
                         : null,
@@ -504,9 +805,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           label: category,
                           isSelected: filter == category,
                           onTap: () {
-                            ref
-                                .read(filterProvider.notifier)
-                                .setCategory(category);
+                            ref.read(filterProvider.notifier).setCategory(category);
                           },
                         ),
                       ),
@@ -730,9 +1029,7 @@ class _ImportModalState extends ConsumerState<ImportModal> {
                   ? const SizedBox(
                       height: 20,
                       width: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                      ),
+                      child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Text('Import'),
             ),
@@ -773,7 +1070,6 @@ class OverviewDetailScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
               Container(
                 padding: const EdgeInsets.all(AppSpacing.lg),
                 decoration: BoxDecoration(
@@ -806,8 +1102,6 @@ class OverviewDetailScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
-
-              // Tabs
               DefaultTabController(
                 length: 4,
                 child: Column(
@@ -824,15 +1118,12 @@ class OverviewDetailScreen extends ConsumerWidget {
                       height: 600,
                       child: TabBarView(
                         children: [
-                          // Idea Tab
                           SingleChildScrollView(
                             child: Padding(
                               padding: const EdgeInsets.all(AppSpacing.lg),
                               child: Text(overview.fullIdeaContent),
                             ),
                           ),
-
-                          // Analysis Tab
                           SingleChildScrollView(
                             child: Padding(
                               padding: const EdgeInsets.all(AppSpacing.lg),
@@ -842,36 +1133,28 @@ class OverviewDetailScreen extends ConsumerWidget {
                                   if (overview.findings != null) ...[
                                     Text(
                                       'Findings',
-                                      style:
-                                          Theme.of(context)
-                                              .textTheme
-                                              .titleMedium,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium,
                                     ),
                                     const SizedBox(height: AppSpacing.md),
-                                    Text(
-                                      overview.findings.toString(),
-                                    ),
+                                    Text(overview.findings.toString()),
                                     const SizedBox(height: AppSpacing.lg),
                                   ],
                                   if (overview.arbiterReport != null) ...[
                                     Text(
                                       "Arbiter's Report",
-                                      style:
-                                          Theme.of(context)
-                                              .textTheme
-                                              .titleMedium,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium,
                                     ),
                                     const SizedBox(height: AppSpacing.md),
-                                    Text(
-                                      overview.arbiterReport.toString(),
-                                    ),
+                                    Text(overview.arbiterReport.toString()),
                                   ],
                                 ],
                               ),
                             ),
                           ),
-
-                          // Reviews Tab
                           reviewsAsync.when(
                             data: (reviews) => SingleChildScrollView(
                               child: Padding(
@@ -883,28 +1166,22 @@ class OverviewDetailScreen extends ConsumerWidget {
                                         child: Text('No reviews yet'),
                                       )
                                     else
-                                      ...reviews.map((review) =>
-                                          ReviewCard(review: review)),
+                                      ...reviews.map(
+                                        (review) => ReviewCard(review: review),
+                                      ),
                                   ],
                                 ),
                               ),
                             ),
-                            loading: () => const Center(
-                              child: CircularProgressIndicator(),
-                            ),
-                            error: (err, _) => Center(
-                              child: Text('Error: $err'),
-                            ),
+                            loading: () =>
+                                const Center(child: CircularProgressIndicator()),
+                            error: (err, _) => Center(child: Text('Error: $err')),
                           ),
-
-                          // Consensus Tab
                           reportAsync.when(
                             data: (report) {
                               if (report == null) {
                                 return const Center(
-                                  child: Text(
-                                    'Waiting for more reviews...',
-                                  ),
+                                  child: Text('Waiting for more reviews...'),
                                 );
                               }
 
@@ -920,15 +1197,14 @@ class OverviewDetailScreen extends ConsumerWidget {
                                             AppSpacing.lg),
                                         decoration: BoxDecoration(
                                           color: VerdictDefinitions
-                                              .verdictColors[
+                                                  .verdictColors[
                                               report.finalVerdict]
                                               ?.withOpacity(0.1),
-                                          borderRadius:
-                                              BorderRadius.circular(
-                                                  AppRadius.lg),
+                                          borderRadius: BorderRadius.circular(
+                                              AppRadius.lg),
                                           border: Border.all(
                                             color: VerdictDefinitions
-                                                .verdictColors[
+                                                    .verdictColors[
                                                 report.finalVerdict] ??
                                                 AppColors.primary,
                                           ),
@@ -951,7 +1227,7 @@ class OverviewDetailScreen extends ConsumerWidget {
                                                 fontSize: 18,
                                                 fontWeight: FontWeight.bold,
                                                 color: VerdictDefinitions
-                                                    .verdictColors[
+                                                        .verdictColors[
                                                     report.finalVerdict],
                                               ),
                                             ),
@@ -966,35 +1242,28 @@ class OverviewDetailScreen extends ConsumerWidget {
                                             .titleMedium,
                                       ),
                                       const SizedBox(height: AppSpacing.md),
-                                      ScoreDisplay(
-                                        scores: report.averageScores,
-                                      ),
+                                      ScoreDisplay(scores: report.averageScores),
                                       const SizedBox(height: AppSpacing.lg),
                                       if (report.areasOfAgreement != null)
                                         _ReportSection(
                                           title: 'Areas of Agreement',
-                                          content: report
-                                              .areasOfAgreement ??
-                                              '',
+                                          content:
+                                              report.areasOfAgreement ?? '',
                                         ),
                                       if (report.areasOfDisagreement != null)
                                         _ReportSection(
                                           title: 'Areas of Disagreement',
-                                          content: report
-                                              .areasOfDisagreement ??
-                                              '',
+                                          content:
+                                              report.areasOfDisagreement ?? '',
                                         ),
                                     ],
                                   ),
                                 ),
                               );
                             },
-                            loading: () => const Center(
-                              child: CircularProgressIndicator(),
-                            ),
-                            error: (err, _) => Center(
-                              child: Text('Error: $err'),
-                            ),
+                            loading: () =>
+                                const Center(child: CircularProgressIndicator()),
+                            error: (err, _) => Center(child: Text('Error: $err')),
                           ),
                         ],
                       ),
@@ -1002,10 +1271,7 @@ class OverviewDetailScreen extends ConsumerWidget {
                   ],
                 ),
               ),
-
               const SizedBox(height: AppSpacing.lg),
-
-              // Submit Review Button
               userProfile.when(
                 data: (user) {
                   if (user == null) {
@@ -1047,8 +1313,7 @@ class OverviewDetailScreen extends ConsumerWidget {
           ),
         ),
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) =>
-            Center(child: Text('Error: $err')),
+        error: (err, stack) => Center(child: Text('Error: $err')),
       ),
     );
   }
@@ -1096,10 +1361,7 @@ class _ReportSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
+        Text(title, style: Theme.of(context).textTheme.titleMedium),
         const SizedBox(height: AppSpacing.sm),
         Text(content),
         const SizedBox(height: AppSpacing.lg),
@@ -1218,8 +1480,7 @@ class _ReviewFormScreenState extends ConsumerState<ReviewFormScreen> {
                           ),
                           decoration: BoxDecoration(
                             color: AppColors.primary.withOpacity(0.1),
-                            borderRadius:
-                                BorderRadius.circular(AppRadius.md),
+                            borderRadius: BorderRadius.circular(AppRadius.md),
                           ),
                           child: Text(
                             '${value ?? 0}',
@@ -1238,8 +1499,7 @@ class _ReviewFormScreenState extends ConsumerState<ReviewFormScreen> {
                       max: 100,
                       divisions: 100,
                       onChanged: (val) {
-                        _updateScore(
-                            reviewForm, key, val.toInt());
+                        _updateScore(reviewForm, key, val.toInt());
                       },
                     ),
                   ],
@@ -1258,8 +1518,7 @@ class _ReviewFormScreenState extends ConsumerState<ReviewFormScreen> {
               value: reviewForm.strengths,
               onChanged: (val) {
                 ref
-                    .read(
-                        reviewFormProvider(
+                    .read(reviewFormProvider(
                             (widget.overviewId, widget.expertId))
                         .notifier)
                     .setStrengths(val);
@@ -1272,8 +1531,7 @@ class _ReviewFormScreenState extends ConsumerState<ReviewFormScreen> {
               value: reviewForm.weaknesses,
               onChanged: (val) {
                 ref
-                    .read(
-                        reviewFormProvider(
+                    .read(reviewFormProvider(
                             (widget.overviewId, widget.expertId))
                         .notifier)
                     .setWeaknesses(val);
@@ -1286,8 +1544,7 @@ class _ReviewFormScreenState extends ConsumerState<ReviewFormScreen> {
               value: reviewForm.risks,
               onChanged: (val) {
                 ref
-                    .read(
-                        reviewFormProvider(
+                    .read(reviewFormProvider(
                             (widget.overviewId, widget.expertId))
                         .notifier)
                     .setRisks(val);
@@ -1301,8 +1558,7 @@ class _ReviewFormScreenState extends ConsumerState<ReviewFormScreen> {
               value: reviewForm.requiredChanges,
               onChanged: (val) {
                 ref
-                    .read(
-                        reviewFormProvider(
+                    .read(reviewFormProvider(
                             (widget.overviewId, widget.expertId))
                         .notifier)
                     .setRequiredChanges(val);
@@ -1321,8 +1577,7 @@ class _ReviewFormScreenState extends ConsumerState<ReviewFormScreen> {
                 child: GestureDetector(
                   onTap: () {
                     ref
-                        .read(
-                            reviewFormProvider(
+                        .read(reviewFormProvider(
                                 (widget.overviewId, widget.expertId))
                             .notifier)
                         .setRecommendation(rec);
@@ -1348,18 +1603,16 @@ class _ReviewFormScreenState extends ConsumerState<ReviewFormScreen> {
                           onChanged: (val) {
                             if (val != null) {
                               ref
-                                  .read(
-                                      reviewFormProvider((widget.overviewId,
-                                              widget.expertId))
-                                          .notifier)
+                                  .read(reviewFormProvider((
+                                    widget.overviewId,
+                                    widget.expertId
+                                  )).notifier)
                                   .setRecommendation(val);
                             }
                           },
                         ),
                         const SizedBox(width: AppSpacing.md),
-                        Expanded(
-                          child: Text(rec),
-                        ),
+                        Expanded(child: Text(rec)),
                       ],
                     ),
                   ),
@@ -1447,15 +1700,9 @@ class _ReviewTextField extends StatelessWidget {
       children: [
         Row(
           children: [
-            Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
+            Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
             if (required)
-              const Text(
-                ' *',
-                style: TextStyle(color: AppColors.error),
-              ),
+              const Text(' *', style: TextStyle(color: AppColors.error)),
           ],
         ),
         const SizedBox(height: AppSpacing.sm),
@@ -1464,9 +1711,7 @@ class _ReviewTextField extends StatelessWidget {
           controller: TextEditingController(text: value),
           minLines: 3,
           maxLines: 6,
-          decoration: InputDecoration(
-            hintText: hint,
-          ),
+          decoration: InputDecoration(hintText: hint),
         ),
       ],
     );
