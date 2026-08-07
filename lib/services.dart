@@ -13,12 +13,9 @@ final supabase = Supabase.instance.client;
 // ============================================================================
 // AUTH SERVICE
 // ============================================================================
-
 class AuthService {
-  String? _lastInternalEmail;
-  String? get lastInternalEmail => _lastInternalEmail;
+  String? get lastInternalEmail => supabase.auth.currentUser?.email;
 
-  /// Sign up with ZetraMail and password
   Future<UserProfile> signUp({
     required String zetramail,
     required String password,
@@ -65,8 +62,6 @@ class AuthService {
     }
   }
 
-  /// Sign in with ZetraMail and password
-  /// Returns user on success, then requires OTP verification
   Future<UserProfile> signIn({
     required String zetramail,
     required String password,
@@ -81,7 +76,6 @@ class AuthService {
       }
 
       final internalEmail = resolveResult as String;
-      _lastInternalEmail = internalEmail;
 
       final authResponse = await supabase.auth.signInWithPassword(
         email: internalEmail,
@@ -108,8 +102,6 @@ class AuthService {
     }
   }
 
-  /// Request OTP code — scoped to this app via p_app_name,
-  /// works off the current auth session (no email param needed)
   Future<void> _requestOtp() async {
     try {
       await supabase.rpc('request_otp', params: {
@@ -120,15 +112,13 @@ class AuthService {
     }
   }
 
-  /// Resend OTP for the current session
   Future<void> resendOtp() async {
-    if (_lastInternalEmail == null) {
-      throw Exception('No pending login session');
+    if (lastInternalEmail == null) {
+      throw Exception('No active session. Please sign in again.');
     }
     await _requestOtp();
   }
 
-  /// Verify OTP code and mark user as fully logged in
   Future<bool> verifyOtp({
     required String internalEmail,
     required String otpCode,
@@ -158,17 +148,14 @@ class AuthService {
     }
   }
 
-  /// Sign out
   Future<void> signOut() async {
     try {
       await supabase.auth.signOut();
-      _lastInternalEmail = null;
     } catch (e) {
       throw Exception('Sign out failed: $e');
     }
   }
 
-  /// Get current user
   Future<UserProfile?> getCurrentUser() async {
     try {
       final user = supabase.auth.currentUser;
@@ -186,6 +173,7 @@ class AuthService {
     }
   }
 }
+
 
 // ============================================================================
 // OVERVIEW SERVICE (Crucible Reports)
