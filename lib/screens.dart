@@ -1024,6 +1024,10 @@ class _ImportModalState extends ConsumerState<ImportModal> {
 
       if (!mounted) return;
 
+      // Force Home's list to refetch instead of serving a stale cache.
+      ref.invalidate(overviewListProvider);
+      ref.invalidate(searchedOverviewsProvider);
+
       Navigator.of(context).pop();
       context.go('/overview/${overview.id}');
     } catch (e) {
