@@ -13,9 +13,11 @@ final supabase = Supabase.instance.client;
 // ============================================================================
 // AUTH SERVICE
 // ============================================================================
+
 class AuthService {
   String? get lastInternalEmail => supabase.auth.currentUser?.email;
 
+  /// Sign up with ZetraMail and password
   Future<UserProfile> signUp({
     required String zetramail,
     required String password,
@@ -62,6 +64,8 @@ class AuthService {
     }
   }
 
+  /// Sign in with ZetraMail and password
+  /// Returns user on success, then requires OTP verification
   Future<UserProfile> signIn({
     required String zetramail,
     required String password,
@@ -102,6 +106,8 @@ class AuthService {
     }
   }
 
+  /// Request OTP code — scoped to this app via p_app_name,
+  /// works off the current auth session
   Future<void> _requestOtp() async {
     try {
       await supabase.rpc('request_otp', params: {
@@ -112,6 +118,7 @@ class AuthService {
     }
   }
 
+  /// Resend OTP for the current session
   Future<void> resendOtp() async {
     if (lastInternalEmail == null) {
       throw Exception('No active session. Please sign in again.');
@@ -119,14 +126,14 @@ class AuthService {
     await _requestOtp();
   }
 
+  /// Verify OTP code and mark user as fully logged in.
+  /// verify_otp works off the current session — only needs the code.
   Future<bool> verifyOtp({
-    required String internalEmail,
     required String otpCode,
   }) async {
     try {
       final result = await supabase.rpc('verify_otp', params: {
-        'p_email': internalEmail,
-        'p_otp': otpCode,
+        'p_code': otpCode,
       });
 
       if (result == true) {
@@ -148,6 +155,7 @@ class AuthService {
     }
   }
 
+  /// Sign out
   Future<void> signOut() async {
     try {
       await supabase.auth.signOut();
@@ -156,6 +164,7 @@ class AuthService {
     }
   }
 
+  /// Get current user
   Future<UserProfile?> getCurrentUser() async {
     try {
       final user = supabase.auth.currentUser;
@@ -173,7 +182,6 @@ class AuthService {
     }
   }
 }
-
 
 // ============================================================================
 // OVERVIEW SERVICE (Crucible Reports)
