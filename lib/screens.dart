@@ -577,14 +577,8 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
 
     try {
       final authService = ref.read(authServiceProvider);
-      final internalEmail = authService.lastInternalEmail;
-
-      if (internalEmail == null) {
-        throw Exception('Session expired. Please sign in again.');
-      }
 
       final result = await authService.verifyOtp(
-        internalEmail: internalEmail,
         otpCode: code,
       );
 
