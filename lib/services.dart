@@ -236,29 +236,21 @@ class OverviewService {
     }
   }
 
-  /// Import overview by ID (verify + add to Tribunal if new)
+  /// Verify an Overview before navigating the user to it.
+  /// Overviews are written directly by Crucible into the same shared
+  /// table Tribunal reads from — Tribunal never copies or inserts a
+  /// row of its own. This method is SELECT-only: it validates the ID
+  /// and content hash, then returns the Overview. Because it never
+  /// writes anything, it can never leave behind a partial or orphaned
+  /// record, no matter how the attempt fails.
   Future<Overview> importOverviewById(String overviewId) async {
-    try {
-      final existing = await supabase
-          .from(TABLE_OVERVIEWS)
-          .select()
-          .eq('id', overviewId)
-          .maybeSingle();
+    final overview = await fetchOverviewById(overviewId);
 
-      if (existing != null) {
-        throw Exception(ErrorMessages.alreadyImported);
-      }
-
-      final overview = await fetchOverviewById(overviewId);
-
-      if (!verifyOverviewHash(overview)) {
-        throw Exception(ErrorMessages.hashMismatch);
-      }
-
-      return overview;
-    } catch (e) {
-      throw Exception('Import failed: $e');
+    if (!verifyOverviewHash(overview)) {
+      throw Exception(ErrorMessages.hashMismatch);
     }
+
+    return overview;
   }
 
   /// Search overviews by category
