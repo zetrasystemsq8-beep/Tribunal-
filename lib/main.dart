@@ -41,14 +41,28 @@ class TribunalApp extends ConsumerWidget {
       title: 'Tribunal',
       debugShowCheckedModeBanner: false,
       theme: _buildTheme(),
+      locale: const Locale('en', 'US'),
+      supportedLocales: const [Locale('en', 'US')],
+      // Force left-to-right layout app-wide. Some device locales/keyboards
+      // can otherwise flip text entry direction inside text fields.
+      builder: (context, child) {
+        return Directionality(
+          textDirection: TextDirection.ltr,
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
       routerConfig: _buildRouter(authState),
     );
   }
 
   GoRouter _buildRouter(AsyncValue<UserProfile?> authState) {
     return GoRouter(
-      initialLocation: '/',
+      initialLocation: '/onboarding',
       routes: [
+        GoRoute(
+          path: '/onboarding',
+          builder: (context, state) => const OnboardingScreen(),
+        ),
         GoRoute(
           path: '/',
           builder: (context, state) {
@@ -56,12 +70,6 @@ class TribunalApp extends ConsumerWidget {
               data: (user) {
                 if (user == null) return const LoginScreen();
 
-                // Real OTP check — was previously a fake always-true check.
-                // A Supabase session exists the instant signInWithPassword
-                // succeeds, BEFORE OTP is verified — so session presence
-                // alone can never be used to decide the user is fully
-                // logged in. We must check the app-specific
-                // trib_otp_verified flag in user metadata instead.
                 final currentAuthUser =
                     Supabase.instance.client.auth.currentUser;
                 final otpVerified =
