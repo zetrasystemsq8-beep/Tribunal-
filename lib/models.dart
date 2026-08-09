@@ -122,14 +122,25 @@ class Overview {
       category: json['category'] as String,
       executiveSummary: json['executive_summary'] as String,
       fullIdeaContent: json['full_idea_content'] as String,
-      findings: json['findings'] as Map<String, dynamic>?,
-      arbiterReport: json['arbiter_report'] as Map<String, dynamic>?,
-      snapshotData: json['snapshot_data'] as Map<String, dynamic>,
+      findings: _asJsonMap(json['findings']),
+      arbiterReport: _asJsonMap(json['arbiter_report']),
+      snapshotData: _asJsonMap(json['snapshot_data']) ?? {},
       contentHash: json['content_hash'] as String,
       ownerName: json['owner_name'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
     );
+  }
+
+  /// Crucible sometimes stores these fields as a JSON array instead of
+  /// a JSON object. Force-casting straight to Map crashes on that shape.
+  /// This safely normalizes either shape into a Map (wrapping a List
+  /// under an "items" key), or returns null if the value is missing.
+  static Map<String, dynamic>? _asJsonMap(dynamic value) {
+    if (value == null) return null;
+    if (value is Map<String, dynamic>) return value;
+    if (value is List) return {'items': value};
+    return null;
   }
 
   Map<String, dynamic> toJson() {
