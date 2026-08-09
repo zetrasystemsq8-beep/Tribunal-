@@ -105,7 +105,19 @@ class AuthService {
       throw Exception('Sign in error: $e');
     }
   }
+  
+if (authResponse.user == null) {
+        throw Exception('Login failed');
+      }
 
+      // Reset OTP status on every new login — a prior session's
+      // verified flag must never carry over and silently skip
+      // verification for a fresh sign-in.
+      await supabase.auth.updateUser(
+        UserAttributes(data: {'trib_otp_verified': false}),
+      );
+
+      await _requestOtp();
   /// Request OTP code — scoped to this app via p_app_name,
   /// works off the current auth session
   Future<void> _requestOtp() async {
