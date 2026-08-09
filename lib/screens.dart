@@ -16,7 +16,7 @@ import 'utils.dart';
 import 'widgets.dart';
 
 // ============================================================================
-// DARK BRAND PALETTE (Login / OTP only)
+// DARK BRAND PALETTE (used app-wide now)
 // ============================================================================
 
 class _Dark {
@@ -77,16 +77,18 @@ class _BlobBackground extends StatelessWidget {
   }
 }
 
-class _GlowMark extends StatelessWidget {
-  const _GlowMark();
+class _GlowIcon extends StatelessWidget {
+  final IconData icon;
+  final double size;
+  const _GlowIcon({required this.icon, this.size = 84});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 84,
-      height: 84,
+      width: size,
+      height: size,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(size * 0.26),
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -100,7 +102,7 @@ class _GlowMark extends StatelessWidget {
           ),
         ],
       ),
-      child: const Icon(Icons.gavel_rounded, color: Colors.white, size: 38),
+      child: Icon(icon, color: Colors.white, size: size * 0.45),
     );
   }
 }
@@ -114,6 +116,7 @@ class _DarkField extends StatelessWidget {
   final TextInputType? keyboardType;
   final bool enabled;
   final ValueChanged<String>? onSubmitted;
+  final ValueChanged<String>? onChanged;
 
   const _DarkField({
     required this.controller,
@@ -124,6 +127,7 @@ class _DarkField extends StatelessWidget {
     this.keyboardType,
     this.enabled = true,
     this.onSubmitted,
+    this.onChanged,
   });
 
   @override
@@ -140,6 +144,9 @@ class _DarkField extends StatelessWidget {
         enabled: enabled,
         keyboardType: keyboardType,
         onSubmitted: onSubmitted,
+        onChanged: onChanged,
+        textDirection: TextDirection.ltr,
+        textAlign: TextAlign.left,
         style: const TextStyle(color: _Dark.textPrimary, fontSize: 15),
         cursorColor: _Dark.accentEnd,
         decoration: InputDecoration(
@@ -227,6 +234,221 @@ class _GradientButton extends StatelessWidget {
                       ],
                     ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DarkErrorCard extends StatelessWidget {
+  final String message;
+  const _DarkErrorCard({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.error.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.error.withOpacity(0.4)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.error_outline_rounded,
+              color: Color(0xFFFF8A8A), size: 18),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              message,
+              textDirection: TextDirection.ltr,
+              style: const TextStyle(
+                color: Color(0xFFFF8A8A),
+                fontSize: 12.5,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// ONBOARDING SCREEN (always shown first)
+// ============================================================================
+
+class OnboardingScreen extends StatefulWidget {
+  const OnboardingScreen({Key? key}) : super(key: key);
+
+  @override
+  State<OnboardingScreen> createState() => _OnboardingScreenState();
+}
+
+class _OnboardingPage {
+  final IconData icon;
+  final String title;
+  final String description;
+  const _OnboardingPage({
+    required this.icon,
+    required this.title,
+    required this.description,
+  });
+}
+
+class _OnboardingScreenState extends State<OnboardingScreen> {
+  final PageController _pageController = PageController();
+  int _currentPage = 0;
+
+  final List<_OnboardingPage> _pages = const [
+    _OnboardingPage(
+      icon: Icons.fact_check_outlined,
+      title: 'Only proven ideas',
+      description:
+          'Tribunal never accepts a raw idea. Every case here already survived Crucible\'s AI stress test before a human ever sees it.',
+    ),
+    _OnboardingPage(
+      icon: Icons.groups_2_outlined,
+      title: 'Real expert judgment',
+      description:
+          'Qualified reviewers weigh in with structured scoring and honest, qualitative assessment — no popularity contest, no noise.',
+    ),
+    _OnboardingPage(
+      icon: Icons.verified_outlined,
+      title: 'A credible verdict',
+      description:
+          'Once enough experts weigh in, Tribunal produces a clear consensus report an idea can actually stand on.',
+    ),
+  ];
+
+  void _next() {
+    if (_currentPage < _pages.length - 1) {
+      _pageController.nextPage(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    } else {
+      context.go('/');
+    }
+  }
+
+  void _skip() {
+    context.go('/');
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isLastPage = _currentPage == _pages.length - 1;
+
+    return Scaffold(
+      backgroundColor: _Dark.bgTop,
+      body: _BlobBackground(
+        child: SafeArea(
+          child: Column(
+            children: [
+              Align(
+                alignment: Alignment.topRight,
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: TextButton(
+                    onPressed: _skip,
+                    child: const Text(
+                      'Skip',
+                      style: TextStyle(
+                        color: _Dark.textSecondary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: PageView.builder(
+                  controller: _pageController,
+                  itemCount: _pages.length,
+                  onPageChanged: (index) {
+                    setState(() => _currentPage = index);
+                  },
+                  itemBuilder: (context, index) {
+                    final page = _pages[index];
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.xl,
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _GlowIcon(icon: page.icon, size: 96),
+                          const SizedBox(height: AppSpacing.xxl),
+                          Text(
+                            page.title,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: _Dark.textPrimary,
+                              fontSize: 26,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          Text(
+                            page.description,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: _Dark.textSecondary,
+                              fontSize: 14.5,
+                              height: 1.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(_pages.length, (index) {
+                    final isActive = index == _currentPage;
+                    return AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      width: isActive ? 24 : 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(4),
+                        color: isActive
+                            ? _Dark.accentEnd
+                            : _Dark.textMuted.withOpacity(0.4),
+                      ),
+                    );
+                  }),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  0,
+                  AppSpacing.lg,
+                  AppSpacing.xl,
+                ),
+                child: _GradientButton(
+                  label: isLastPage ? 'Get Started' : 'Next',
+                  trailingIcon: Icons.arrow_forward_rounded,
+                  onPressed: _next,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -395,7 +617,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: AppSpacing.xl),
-                const Center(child: _GlowMark()),
+                const Center(child: _GlowIcon(icon: Icons.gavel_rounded)),
                 const SizedBox(height: AppSpacing.lg),
                 const Text(
                   'Welcome back',
@@ -482,41 +704,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _DarkErrorCard extends StatelessWidget {
-  final String message;
-  const _DarkErrorCard({required this.message});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppColors.error.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.error.withOpacity(0.4)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.error_outline_rounded,
-              color: Color(0xFFFF8A8A), size: 18),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(
-                color: Color(0xFFFF8A8A),
-                fontSize: 12.5,
-                height: 1.4,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -644,29 +831,8 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: AppSpacing.xl),
-                Center(
-                  child: Container(
-                    width: 84,
-                    height: 84,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(22),
-                      gradient: const LinearGradient(
-                        colors: [_Dark.accentStart, _Dark.accentEnd],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: _Dark.accentStart.withOpacity(0.45),
-                          blurRadius: 32,
-                          spreadRadius: 2,
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.mark_email_read_outlined,
-                      color: Colors.white,
-                      size: 36,
-                    ),
-                  ),
+                const Center(
+                  child: _GlowIcon(icon: Icons.mark_email_read_outlined),
                 ),
                 const SizedBox(height: AppSpacing.lg),
                 const Text(
@@ -697,6 +863,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                     keyboardType: TextInputType.number,
                     maxLength: 6,
                     textAlign: TextAlign.center,
+                    textDirection: TextDirection.ltr,
                     style: const TextStyle(
                       fontSize: 26,
                       fontWeight: FontWeight.w700,
@@ -785,7 +952,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
 }
 
 // ============================================================================
-// HOME SCREEN (Browse)
+// HOME SCREEN (Browse) — redesigned, dark theme
 // ============================================================================
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -796,6 +963,20 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
+  late TextEditingController searchController;
+
+  @override
+  void initState() {
+    super.initState();
+    searchController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final overviewsAsync = ref.watch(searchedOverviewsProvider);
@@ -803,124 +984,182 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final search = ref.watch(searchProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Tribunal'),
-        centerTitle: true,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.account_circle),
-            onPressed: () {
-              // TODO: Navigate to profile
+      backgroundColor: _Dark.bgTop,
+      body: _BlobBackground(
+        child: SafeArea(
+          child: RefreshIndicator(
+            color: _Dark.accentEnd,
+            backgroundColor: _Dark.card,
+            onRefresh: () async {
+              ref.invalidate(overviewListProvider);
+              ref.invalidate(searchedOverviewsProvider);
+              await ref.read(searchedOverviewsProvider.future);
             },
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Column(
-              children: [
-                TextField(
-                  onChanged: (value) {
-                    ref.read(searchProvider.notifier).setQuery(value);
-                  },
-                  decoration: InputDecoration(
-                    hintText: 'Search ideas...',
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: search.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: () {
-                              ref.read(searchProvider.notifier).clear();
-                            },
-                          )
-                        : null,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                SizedBox(
-                  height: 48,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    children: [
-                      _FilterChip(
-                        label: 'All',
-                        isSelected: filter == null,
-                        onTap: () {
-                          ref.read(filterProvider.notifier).clear();
-                        },
-                      ),
-                      ...IdeaCategories.all.map(
-                        (category) => _FilterChip(
-                          label: category,
-                          isSelected: filter == category,
-                          onTap: () {
-                            ref.read(filterProvider.notifier).setCategory(category);
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: overviewsAsync.when(
-              data: (overviews) {
-                if (overviews.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+            child: CustomScrollView(
+              physics: const BouncingScrollPhysics(
+                parent: AlwaysScrollableScrollPhysics(),
+              ),
+              slivers: [
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.lg,
+                      AppSpacing.md,
+                      AppSpacing.lg,
+                      0,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Icon(
-                          Icons.inbox_outlined,
-                          size: 48,
-                          color: AppColors.neutral300,
-                        ),
-                        const SizedBox(height: AppSpacing.lg),
                         const Text(
-                          'No ideas found',
+                          'Tribunal',
                           style: TextStyle(
-                            color: AppColors.neutral600,
-                            fontSize: 16,
+                            color: _Dark.textPrimary,
+                            fontSize: 24,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: _Dark.card,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: _Dark.cardBorder),
+                          ),
+                          child: IconButton(
+                            padding: EdgeInsets.zero,
+                            icon: const Icon(
+                              Icons.person_outline_rounded,
+                              color: _Dark.textSecondary,
+                              size: 20,
+                            ),
+                            onPressed: () {
+                              // TODO: Navigate to profile
+                            },
                           ),
                         ),
                       ],
                     ),
-                  );
-                }
-
-                return ListView.builder(
-                  itemCount: overviews.length,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.lg,
-                    vertical: AppSpacing.md,
                   ),
-                  itemBuilder: (context, index) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                      child: CaseCard(overview: overviews[index]),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.lg,
+                      AppSpacing.lg,
+                      AppSpacing.lg,
+                      AppSpacing.md,
+                    ),
+                    child: _DarkField(
+                      controller: searchController,
+                      hint: 'Search ideas...',
+                      icon: Icons.search_rounded,
+                      onChanged: (value) {
+                        ref.read(searchProvider.notifier).setQuery(value);
+                      },
+                      suffix: search.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(
+                                Icons.clear_rounded,
+                                color: _Dark.textSecondary,
+                                size: 18,
+                              ),
+                              onPressed: () {
+                                searchController.clear();
+                                ref.read(searchProvider.notifier).clear();
+                              },
+                            )
+                          : null,
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: SizedBox(
+                    height: 44,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.lg,
+                      ),
+                      children: [
+                        _DarkFilterChip(
+                          label: 'All',
+                          isSelected: filter == null,
+                          onTap: () => ref.read(filterProvider.notifier).clear(),
+                        ),
+                        ...IdeaCategories.all.map(
+                          (category) => _DarkFilterChip(
+                            label: category,
+                            isSelected: filter == category,
+                            onTap: () => ref
+                                .read(filterProvider.notifier)
+                                .setCategory(category),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SliverToBoxAdapter(
+                  child: SizedBox(height: AppSpacing.md),
+                ),
+                overviewsAsync.when(
+                  data: (overviews) {
+                    if (overviews.isEmpty) {
+                      return SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: _EmptyHomeState(),
+                      );
+                    }
+
+                    return SliverPadding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.lg,
+                      ),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            return Padding(
+                              padding: const EdgeInsets.only(
+                                bottom: AppSpacing.md,
+                              ),
+                              child: _DarkCaseCard(
+                                overview: overviews[index],
+                              ),
+                            );
+                          },
+                          childCount: overviews.length,
+                        ),
+                      ),
                     );
                   },
-                );
-              },
-              loading: () => const Center(
-                child: CircularProgressIndicator(),
-              ),
-              error: (err, stack) => Center(
-                child: Text('Error: $err'),
-              ),
+                  loading: () => const SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Center(
+                      child: CircularProgressIndicator(color: _Dark.accentEnd),
+                    ),
+                  ),
+                  error: (err, stack) => SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Center(
+                      child: Text(
+                        'Error: $err',
+                        style: const TextStyle(color: _Dark.textSecondary),
+                      ),
+                    ),
+                  ),
+                ),
+                const SliverToBoxAdapter(
+                  child: SizedBox(height: 96),
+                ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: _GradientFAB(
         onPressed: () => _showImportModal(context),
-        tooltip: 'Import Crucible Report',
-        child: const Icon(Icons.add),
       ),
     );
   }
@@ -929,17 +1168,102 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) => const ImportModal(),
     );
   }
 }
 
-class _FilterChip extends StatelessWidget {
+class _GradientFAB extends StatelessWidget {
+  final VoidCallback onPressed;
+  const _GradientFAB({required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 60,
+      height: 60,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: const LinearGradient(
+          colors: [_Dark.accentStart, _Dark.accentEnd],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: _Dark.accentStart.withOpacity(0.5),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onPressed,
+          child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyHomeState extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: _Dark.card,
+                shape: BoxShape.circle,
+                border: Border.all(color: _Dark.cardBorder),
+              ),
+              child: const Icon(
+                Icons.inbox_outlined,
+                size: 32,
+                color: _Dark.textMuted,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            const Text(
+              'No ideas yet',
+              style: TextStyle(
+                color: _Dark.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            const Text(
+              'Import a Crucible Overview by ID to bring it to Tribunal for expert review.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: _Dark.textSecondary,
+                fontSize: 13,
+                height: 1.4,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DarkFilterChip extends StatelessWidget {
   final String label;
   final bool isSelected;
   final VoidCallback onTap;
 
-  const _FilterChip({
+  const _DarkFilterChip({
     required this.label,
     required this.isSelected,
     required this.onTap,
@@ -951,24 +1275,32 @@ class _FilterChip extends StatelessWidget {
       padding: const EdgeInsets.only(right: AppSpacing.sm),
       child: GestureDetector(
         onTap: onTap,
-        child: Container(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.md,
             vertical: AppSpacing.sm,
           ),
           decoration: BoxDecoration(
-            color: isSelected ? AppColors.primary : AppColors.neutral100,
+            gradient: isSelected
+                ? const LinearGradient(
+                    colors: [_Dark.accentStart, _Dark.accentEnd],
+                  )
+                : null,
+            color: isSelected ? null : _Dark.card,
             borderRadius: BorderRadius.circular(AppRadius.xl),
             border: Border.all(
-              color: isSelected ? AppColors.primary : AppColors.neutral200,
+              color: isSelected ? Colors.transparent : _Dark.cardBorder,
             ),
           ),
-          child: Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? Colors.white : AppColors.neutral700,
-              fontSize: 13,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? Colors.white : _Dark.textSecondary,
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+              ),
             ),
           ),
         ),
@@ -977,8 +1309,125 @@ class _FilterChip extends StatelessWidget {
   }
 }
 
+class _DarkCaseCard extends StatelessWidget {
+  final Overview overview;
+  const _DarkCaseCard({required this.overview});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: () => context.go('/overview/${overview.id}'),
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          decoration: BoxDecoration(
+            color: _Dark.card,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: _Dark.cardBorder),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          overview.title,
+                          style: const TextStyle(
+                            color: _Dark.textPrimary,
+                            fontSize: 15.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          overview.oneLiner,
+                          style: const TextStyle(
+                            color: _Dark.textSecondary,
+                            fontSize: 13,
+                            height: 1.4,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: _Dark.accentStart.withOpacity(0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.arrow_forward_rounded,
+                      color: _Dark.accentEnd,
+                      size: 16,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _Dark.accentStart.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      overview.category,
+                      style: const TextStyle(
+                        color: _Dark.accentEnd,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    _formatDate(overview.createdAt),
+                    style: const TextStyle(
+                      color: _Dark.textMuted,
+                      fontSize: 11.5,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final diff = now.difference(date);
+
+    if (diff.inHours < 1) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    if (diff.inDays < 7) return '${diff.inDays}d ago';
+    return '${date.month}/${date.day}';
+  }
+}
+
 // ============================================================================
-// IMPORT MODAL
+// IMPORT MODAL — dark themed
 // ============================================================================
 
 class ImportModal extends ConsumerStatefulWidget {
@@ -1024,7 +1473,6 @@ class _ImportModalState extends ConsumerState<ImportModal> {
 
       if (!mounted) return;
 
-      // Force Home's list to refetch instead of serving a stale cache.
       ref.invalidate(overviewListProvider);
       ref.invalidate(searchedOverviewsProvider);
 
@@ -1046,49 +1494,59 @@ class _ImportModalState extends ConsumerState<ImportModal> {
       ),
       child: Container(
         padding: const EdgeInsets.all(AppSpacing.lg),
+        decoration: const BoxDecoration(
+          color: _Dark.bgBottom,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(24),
+            topRight: Radius.circular(24),
+          ),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: AppSpacing.lg),
+                decoration: BoxDecoration(
+                  color: _Dark.cardBorder,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const Text(
               'Import Crucible Report',
-              style: Theme.of(context).textTheme.titleLarge,
+              style: TextStyle(
+                color: _Dark.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            const Text(
+              'Paste the Overview ID or link from Crucible',
+              style: TextStyle(color: _Dark.textSecondary, fontSize: 12.5),
             ),
             const SizedBox(height: AppSpacing.lg),
-            TextField(
+            _DarkField(
               controller: idController,
-              decoration: InputDecoration(
-                labelText: 'Overview ID',
-                hintText: 'Paste the ID or link',
-                prefixIcon: const Icon(Icons.paste),
-              ),
+              hint: 'Overview ID',
+              icon: Icons.tag_rounded,
               enabled: !isLoading,
             ),
-            const SizedBox(height: AppSpacing.lg),
-            if (errorMessage != null)
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                decoration: BoxDecoration(
-                  color: AppColors.error.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                  border: Border.all(color: AppColors.error),
-                ),
-                child: Text(
-                  errorMessage!,
-                  style: const TextStyle(color: AppColors.error),
-                ),
-              ),
-            const SizedBox(height: AppSpacing.lg),
-            ElevatedButton(
+            if (errorMessage != null) ...[
+              const SizedBox(height: AppSpacing.lg),
+              _DarkErrorCard(message: errorMessage!),
+            ],
+            const SizedBox(height: AppSpacing.xl),
+            _GradientButton(
+              label: 'Import',
+              isLoading: isLoading,
               onPressed: isLoading ? null : _handleImport,
-              child: isLoading
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Import'),
             ),
+            const SizedBox(height: AppSpacing.sm),
           ],
         ),
       ),
@@ -1767,6 +2225,8 @@ class _ReviewTextField extends StatelessWidget {
           controller: TextEditingController(text: value),
           minLines: 3,
           maxLines: 6,
+          textDirection: TextDirection.ltr,
+          textAlign: TextAlign.left,
           decoration: InputDecoration(hintText: hint),
         ),
       ],
