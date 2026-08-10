@@ -1555,9 +1555,10 @@ class _ImportModalState extends ConsumerState<ImportModal> {
 }
 
 // ============================================================================
-// OVERVIEW DETAIL SCREEN — fixed scrolling: header + tabs + tab content
-// each scroll cleanly instead of competing (was: outer scroll view +
-// fixed-height TabBarView, which caused janky/broken scrolling).
+// OVERVIEW DETAIL SCREEN — dark themed, header scrolls away with content
+// via NestedScrollView so the tab body gets full available space instead
+// of being squeezed under a fixed header (that was the "small space for
+// scrolling" bug).
 // ============================================================================
 
 class OverviewDetailScreen extends ConsumerWidget {
@@ -1568,71 +1569,170 @@ class OverviewDetailScreen extends ConsumerWidget {
     required this.overviewId,
   }) : super(key: key);
 
+  Future<void> _shareOverview(BuildContext context, Overview overview) async {
+    final link = 'Overview ID: ${overview.id}\n${overview.title}';
+    await Clipboard.setData(ClipboardData(text: link));
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Overview ID copied to clipboard'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final overviewAsync = ref.watch(overviewDetailProvider(overviewId));
     final reviewsAsync = ref.watch(reviewsForOverviewProvider(overviewId));
     final reportAsync = ref.watch(finalReportProvider(overviewId));
+    final avgScoreAsync = ref.watch(averageReviewScoreProvider(overviewId));
     final userProfile = ref.watch(userProfileProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Case Details'),
-        elevation: 0,
-      ),
+      backgroundColor: _Dark.bgTop,
       body: overviewAsync.when(
-        data: (overview) => DefaultTabController(
-          length: 4,
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                child: Container(
-                  padding: const EdgeInsets.all(AppSpacing.lg),
-                  decoration: BoxDecoration(
-                    color: AppColors.neutral50,
-                    borderRadius: BorderRadius.circular(AppRadius.lg),
-                    border: Border.all(color: AppColors.neutral200),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        overview.title,
-                        style: Theme.of(context).textTheme.headlineSmall,
+        data: (overview) => _BlobBackground(
+          child: SafeArea(
+            child: DefaultTabController(
+              length: 4,
+              child: NestedScrollView(
+                headerSliverBuilder: (context, innerBoxIsScrolled) {
+                  return [
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.lg,
+                          AppSpacing.md,
+                          AppSpacing.lg,
+                          0,
+                        ),
+                        child: Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(
+                                Icons.arrow_back_rounded,
+                                color: _Dark.textPrimary,
+                              ),
+                              onPressed: () => context.pop(),
+                            ),
+                            const Text(
+                              'Case Details',
+                              style: TextStyle(
+                                color: _Dark.textPrimary,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const Spacer(),
+                            IconButton(
+                              icon: const Icon(
+                                Icons.share_outlined,
+                                color: _Dark.textSecondary,
+                              ),
+                              onPressed: () =>
+                                  _shareOverview(context, overview),
+                            ),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        overview.oneLiner,
-                        style: Theme.of(context).textTheme.bodyLarge,
+                    ),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.lg,
+                          AppSpacing.md,
+                          AppSpacing.lg,
+                          AppSpacing.md,
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.all(AppSpacing.lg),
+                          decoration: BoxDecoration(
+                            color: _Dark.card,
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(color: _Dark.cardBorder),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                overview.title,
+                                style: const TextStyle(
+                                  color: _Dark.textPrimary,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.sm),
+                              Text(
+                                overview.oneLiner,
+                                style: const TextStyle(
+                                  color: _Dark.textSecondary,
+                                  fontSize: 14,
+                                  height: 1.4,
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.md),
+                              Wrap(
+                                spacing: AppSpacing.sm,
+                                runSpacing: AppSpacing.sm,
+                                children: [
+                                  _DarkBadge(label: overview.category),
+                                  if (overview.ownerName != null)
+                                    _DarkBadge(
+                                        label: 'by ${overview.ownerName}'),
+                                ],
+                              ),
+                              const SizedBox(height: AppSpacing.md),
+                              Row(
+                                children: [
+                                  reviewsAsync.when(
+                                    data: (reviews) => _StatChip(
+                                      icon: Icons.rate_review_outlined,
+                                      label:
+                                          '${reviews.length} review${reviews.length == 1 ? '' : 's'}',
+                                    ),
+                                    loading: () => const SizedBox.shrink(),
+                                    error: (_, __) => const SizedBox.shrink(),
+                                  ),
+                                  const SizedBox(width: AppSpacing.sm),
+                                  avgScoreAsync.when(
+                                    data: (score) => score > 0
+                                        ? _StatChip(
+                                            icon: Icons.trending_up_rounded,
+                                            label:
+                                                'Avg ${score.toStringAsFixed(0)}/100',
+                                          )
+                                        : const SizedBox.shrink(),
+                                    loading: () => const SizedBox.shrink(),
+                                    error: (_, __) => const SizedBox.shrink(),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                      const SizedBox(height: AppSpacing.md),
-                      Wrap(
-                        spacing: AppSpacing.sm,
-                        children: [
-                          _Badge(label: overview.category),
-                          if (overview.ownerName != null)
-                            _Badge(label: 'by ${overview.ownerName}'),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const TabBar(
-                tabs: [
-                  Tab(text: 'Idea'),
-                  Tab(text: 'Analysis'),
-                  Tab(text: 'Reviews'),
-                  Tab(text: 'Consensus'),
-                ],
-              ),
-              Expanded(
-                child: TabBarView(
+                    ),
+                    SliverPersistentHeader(
+                      pinned: true,
+                      delegate: _DarkTabBarDelegate(),
+                    ),
+                  ];
+                },
+                body: TabBarView(
                   children: [
                     SingleChildScrollView(
                       padding: const EdgeInsets.all(AppSpacing.lg),
-                      child: Text(overview.fullIdeaContent),
+                      child: Text(
+                        overview.fullIdeaContent,
+                        style: const TextStyle(
+                          color: _Dark.textSecondary,
+                          fontSize: 14,
+                          height: 1.6,
+                        ),
+                      ),
                     ),
                     SingleChildScrollView(
                       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -1640,21 +1740,43 @@ class OverviewDetailScreen extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           if (overview.findings != null) ...[
-                            Text(
+                            const Text(
                               'Findings',
-                              style: Theme.of(context).textTheme.titleMedium,
+                              style: TextStyle(
+                                color: _Dark.textPrimary,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                             const SizedBox(height: AppSpacing.md),
-                            Text(overview.findings.toString()),
+                            Text(
+                              overview.findings.toString(),
+                              style: const TextStyle(
+                                color: _Dark.textSecondary,
+                                fontSize: 13.5,
+                                height: 1.5,
+                              ),
+                            ),
                             const SizedBox(height: AppSpacing.lg),
                           ],
                           if (overview.arbiterReport != null) ...[
-                            Text(
+                            const Text(
                               "Arbiter's Report",
-                              style: Theme.of(context).textTheme.titleMedium,
+                              style: TextStyle(
+                                color: _Dark.textPrimary,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                             const SizedBox(height: AppSpacing.md),
-                            Text(overview.arbiterReport.toString()),
+                            Text(
+                              overview.arbiterReport.toString(),
+                              style: const TextStyle(
+                                color: _Dark.textSecondary,
+                                fontSize: 13.5,
+                                height: 1.5,
+                              ),
+                            ),
                           ],
                         ],
                       ),
@@ -1665,7 +1787,14 @@ class OverviewDetailScreen extends ConsumerWidget {
                         child: Column(
                           children: [
                             if (reviews.isEmpty)
-                              const Center(child: Text('No reviews yet'))
+                              const Padding(
+                                padding: EdgeInsets.only(top: AppSpacing.xxl),
+                                child: Text(
+                                  'No reviews yet',
+                                  style:
+                                      TextStyle(color: _Dark.textSecondary),
+                                ),
+                              )
                             else
                               ...reviews.map(
                                 (review) => ReviewCard(review: review),
@@ -1673,15 +1802,24 @@ class OverviewDetailScreen extends ConsumerWidget {
                           ],
                         ),
                       ),
-                      loading: () =>
-                          const Center(child: CircularProgressIndicator()),
-                      error: (err, _) => Center(child: Text('Error: $err')),
+                      loading: () => const Center(
+                        child: CircularProgressIndicator(
+                          color: _Dark.accentEnd,
+                        ),
+                      ),
+                      error: (err, _) => Center(
+                        child: Text('Error: $err',
+                            style: const TextStyle(color: _Dark.textSecondary)),
+                      ),
                     ),
                     reportAsync.when(
                       data: (report) {
                         if (report == null) {
                           return const Center(
-                            child: Text('Waiting for more reviews...'),
+                            child: Text(
+                              'Waiting for more reviews...',
+                              style: TextStyle(color: _Dark.textSecondary),
+                            ),
                           );
                         }
 
@@ -1693,11 +1831,12 @@ class OverviewDetailScreen extends ConsumerWidget {
                               Container(
                                 padding: const EdgeInsets.all(AppSpacing.lg),
                                 decoration: BoxDecoration(
-                                  color: VerdictDefinitions
-                                          .verdictColors[report.finalVerdict]
-                                      ?.withOpacity(0.1),
-                                  borderRadius:
-                                      BorderRadius.circular(AppRadius.lg),
+                                  color: (VerdictDefinitions
+                                              .verdictColors[
+                                          report.finalVerdict] ??
+                                      AppColors.primary)
+                                      .withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(16),
                                   border: Border.all(
                                     color: VerdictDefinitions
                                             .verdictColors[
@@ -1709,18 +1848,19 @@ class OverviewDetailScreen extends ConsumerWidget {
                                   crossAxisAlignment:
                                       CrossAxisAlignment.start,
                                   children: [
-                                    Text(
+                                    const Text(
                                       'Final Verdict',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleMedium,
+                                      style: TextStyle(
+                                        color: _Dark.textSecondary,
+                                        fontSize: 13,
+                                      ),
                                     ),
                                     const SizedBox(height: AppSpacing.sm),
                                     Text(
                                       report.finalVerdict,
                                       style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w800,
                                         color: VerdictDefinitions
                                             .verdictColors[
                                                 report.finalVerdict],
@@ -1730,21 +1870,24 @@ class OverviewDetailScreen extends ConsumerWidget {
                                 ),
                               ),
                               const SizedBox(height: AppSpacing.lg),
-                              Text(
+                              const Text(
                                 'Average Scores',
-                                style:
-                                    Theme.of(context).textTheme.titleMedium,
+                                style: TextStyle(
+                                  color: _Dark.textPrimary,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                               const SizedBox(height: AppSpacing.md),
                               ScoreDisplay(scores: report.averageScores),
                               const SizedBox(height: AppSpacing.lg),
                               if (report.areasOfAgreement != null)
-                                _ReportSection(
+                                _DarkReportSection(
                                   title: 'Areas of Agreement',
                                   content: report.areasOfAgreement ?? '',
                                 ),
                               if (report.areasOfDisagreement != null)
-                                _ReportSection(
+                                _DarkReportSection(
                                   title: 'Areas of Disagreement',
                                   content: report.areasOfDisagreement ?? '',
                                 ),
@@ -1752,110 +1895,215 @@ class OverviewDetailScreen extends ConsumerWidget {
                           ),
                         );
                       },
-                      loading: () =>
-                          const Center(child: CircularProgressIndicator()),
-                      error: (err, _) => Center(child: Text('Error: $err')),
+                      loading: () => const Center(
+                        child: CircularProgressIndicator(
+                          color: _Dark.accentEnd,
+                        ),
+                      ),
+                      error: (err, _) => Center(
+                        child: Text('Error: $err',
+                            style: const TextStyle(color: _Dark.textSecondary)),
+                      ),
                     ),
                   ],
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                child: userProfile.when(
-                  data: (user) {
-                    if (user == null) {
-                      return SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Please log in to review'),
-                              ),
-                            );
-                          },
-                          child: const Text('Sign In to Review'),
-                        ),
-                      );
-                    }
-
-                    return SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          context.push('/review/$overviewId/${user.id}');
-                        },
-                        child: const Text('Submit Your Review'),
+            ),
+          ),
+        ),
+        loading: () => _BlobBackground(
+          child: const Center(
+            child: CircularProgressIndicator(color: _Dark.accentEnd),
+          ),
+        ),
+        error: (err, stack) => _BlobBackground(
+          child: Center(
+            child: Text(
+              'Error: $err',
+              style: const TextStyle(color: _Dark.textSecondary),
+            ),
+          ),
+        ),
+      ),
+      bottomNavigationBar: overviewAsync.maybeWhen(
+        data: (overview) => Padding(
+          padding: EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.md,
+            AppSpacing.lg,
+            AppSpacing.md + MediaQuery.of(context).padding.bottom,
+          ),
+          child: userProfile.when(
+            data: (user) {
+              if (user == null) {
+                return _GradientButton(
+                  label: 'Sign In to Review',
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Please log in to review'),
                       ),
                     );
                   },
-                  loading: () => const SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: null,
-                      child: Text('Loading...'),
-                    ),
-                  ),
-                  error: (_, __) => const SizedBox.shrink(),
-                ),
-              ),
-            ],
+                );
+              }
+
+              return _GradientButton(
+                label: 'Submit Your Review',
+                trailingIcon: Icons.arrow_forward_rounded,
+                onPressed: () {
+                  context.push('/review/$overviewId/${user.id}');
+                },
+              );
+            },
+            loading: () => const _GradientButton(
+              label: 'Loading...',
+              onPressed: null,
+            ),
+            error: (_, __) => const SizedBox.shrink(),
           ),
         ),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('Error: $err')),
+        orElse: () => null,
       ),
     );
   }
 }
 
-class _Badge extends StatelessWidget {
-  final String label;
+class _DarkTabBarDelegate extends SliverPersistentHeaderDelegate {
+  @override
+  double get minExtent => 48;
 
-  const _Badge({required this.label});
+  @override
+  double get maxExtent => 48;
+
+  @override
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Container(
+      color: _Dark.bgTop,
+      child: const TabBar(
+        labelColor: _Dark.accentEnd,
+        unselectedLabelColor: _Dark.textMuted,
+        indicatorColor: _Dark.accentEnd,
+        indicatorWeight: 2.5,
+        labelStyle: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+        unselectedLabelStyle:
+            TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+        tabs: [
+          Tab(text: 'Idea'),
+          Tab(text: 'Analysis'),
+          Tab(text: 'Reviews'),
+          Tab(text: 'Consensus'),
+        ],
+      ),
+    );
+  }
+
+  @override
+  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) {
+    return false;
+  }
+}
+
+class _StatChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _StatChip({required this.icon, required this.label});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.sm,
+        horizontal: AppSpacing.sm,
+        vertical: 6,
       ),
       decoration: BoxDecoration(
-        color: AppColors.primary.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(AppRadius.md),
+        color: _Dark.bgTop,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _Dark.cardBorder),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: _Dark.accentEnd),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              color: _Dark.textSecondary,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DarkBadge extends StatelessWidget {
+  final String label;
+
+  const _DarkBadge({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: 5,
+      ),
+      decoration: BoxDecoration(
+        color: _Dark.accentStart.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
         label,
         style: const TextStyle(
-          color: AppColors.primary,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
+          color: _Dark.accentEnd,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );
   }
 }
 
-class _ReportSection extends StatelessWidget {
+class _DarkReportSection extends StatelessWidget {
   final String title;
   final String content;
 
-  const _ReportSection({
+  const _DarkReportSection({
     required this.title,
     required this.content,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: AppSpacing.sm),
-        Text(content),
-        const SizedBox(height: AppSpacing.lg),
-      ],
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              color: _Dark.textPrimary,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            content,
+            style: const TextStyle(
+              color: _Dark.textSecondary,
+              fontSize: 13.5,
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
