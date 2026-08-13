@@ -1611,11 +1611,18 @@ class OverviewDetailScreen extends ConsumerWidget {
                         child: Row(
                           children: [
                             IconButton(
+                              IconButton(
                               icon: const Icon(
                                 Icons.arrow_back_rounded,
                                 color: _Dark.textPrimary,
                               ),
-                              onPressed: () => context.pop(),
+                              onPressed: () {
+                                if (context.canPop()) {
+                                  context.pop();
+                                } else {
+                                  context.go('/home');
+                                }
+                              },
                             ),
                             const Text(
                               'Case Details',
