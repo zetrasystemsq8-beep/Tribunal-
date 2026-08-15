@@ -1611,7 +1611,7 @@ class OverviewDetailScreen extends ConsumerWidget {
                         child: Row(
                           children: [
                             IconButton(
-                              IconButton(
+                            
                               icon: const Icon(
                                 Icons.arrow_back_rounded,
                                 color: _Dark.textPrimary,
