@@ -7,6 +7,7 @@ import 'config.dart';
 import 'models.dart';
 import 'providers.dart';
 import 'screens.dart';
+import 'update_gate.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,7 +19,7 @@ void main() async {
     anonKey: SUPABASE_ANON_KEY,
   );
 
-  runApp(const ProviderScope(child: TribunalApp()));
+  runApp(const UpdateGate(child: ProviderScope(child: TribunalApp())));
 }
 
 void _validateSecrets() {
